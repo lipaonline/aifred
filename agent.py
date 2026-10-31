@@ -20,6 +20,7 @@ import time
 from livekit import rtc
 from livekit.agents import (
     Agent,
+    APIConnectOptions,
     AgentServer,
     AgentSession,
     AutoSubscribe,
@@ -28,6 +29,7 @@ from livekit.agents import (
     StopResponse,
     cli,
     llm,
+    SessionConnectOptions,
     room_io,
 )
 from livekit.agents.utils import images
@@ -39,6 +41,9 @@ import tools
 
 logger = logging.getLogger("aifred")
 FOLLOW_UP_SECONDS = 20
+# Dit dès la fin de la phrase, sans attendre Claude : jamais de gros blanc
+ACK_QUESTION = ("Je regarde.", "Un instant.")
+ACK_YES = "Je m'en occupe."
 
 
 class Cameras:
@@ -85,29 +90,53 @@ class Aifred(Agent):
         super().__init__(instructions=(config.ROOT / "prompt.md").read_text("utf-8"), tools=tools.ALL)
         self._room = room
         self.last_reply = 0.0
+        self.asker: str | None = None       # la personne à qui il vient de répondre
+        self._acks = 0
 
     def _humans(self) -> list[rtc.RemoteParticipant]:
         return [p for p in self._room.remote_participants.values()
                 if p.kind != rtc.ParticipantKind.PARTICIPANT_KIND_AGENT]
 
-    def _should_answer(self, text: str) -> bool:
+    def _should_answer(self, text: str, speaker: rtc.RemoteParticipant | None) -> bool:
+        """Seul avec AIfred, on lui parle forcément. À plusieurs, on se parle entre humains : il répond si on
+        l'appelle, ou s'il attend la suite de la personne à qui il vient de répondre."""
         heard = db._plain(text)
-        addressed = "alfred" in heard or "alfre" in heard
-        follow_up = time.time() - self.last_reply < FOLLOW_UP_SECONDS
-        waiting_yes = self.session.userdata.pending is not None
-        # Seul avec AIfred, on lui parle forcément. À plusieurs, on se parle entre humains.
-        return len(self._humans()) <= 1 or addressed or follow_up or waiting_yes
+        identity = speaker.identity if speaker else None
+        humans = self._humans()
+        if len(humans) <= 1 or "alfred" in heard or "alfre" in heard:
+            self.asker = identity
+            return True
+        words = heard.split()
+        talks_to_someone = words and any(words[0].strip(",.!?") == db._plain(p.name or " ").split()[0] for p in humans)
+        if talks_to_someone:
+            return False
+        still_talking = self.session.agent_state != "listening"
+        follow_up = identity == self.asker and (still_talking or time.time() - self.last_reply < FOLLOW_UP_SECONDS)
+        waiting_yes = (self.session.userdata.pending is not None and speaker is not None
+                       and speaker.attributes.get("role") == "equipe" and bool(tools.YES_RE.search(heard) or tools.NO_RE.search(heard)))
+        return follow_up or waiting_yes
+
+    def _ack(self, text: str):
+        if tools.YES_RE.search(db._plain(text)):
+            phrase = ACK_YES
+        else:
+            phrase = ACK_QUESTION[self._acks % len(ACK_QUESTION)]
+            self._acks += 1
+        self.session.say(phrase, add_to_chat_ctx=False)
 
     async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
-        if not self._should_answer(new_message.text_content or ""):
+        text = new_message.text_content or ""
+        if not self._should_answer(text, self.session.room_io.linked_participant):
             raise StopResponse()
+        self._ack(text)
 
     async def heard(self, participant: rtc.RemoteParticipant, text: str) -> None:
-        """Une autre personne a parlé. Son identité reste sur le message : confirmer_invitation la vérifie."""
+        """Une autre personne a parlé. Son identité reste sur le message : confirmer_envoi la vérifie."""
         role = participant.attributes.get("role", "invité")
         message = llm.ChatMessage(role="user", content=[f"{participant.name} ({role}) : {text}"],
                                   extra={"identity": participant.identity})
-        if self._should_answer(text):
+        if self._should_answer(text, participant):
+            self._ack(text)
             self.session.generate_reply(user_input=message)
         else:
             # Il ne répond pas, mais il retient : « qu'est-ce que Marc vient de dire ? »
@@ -129,6 +158,25 @@ class Oreilles(Agent):
         raise StopResponse()
 
 
+# La fin de phrase est le plus gros poste d'attente : on la décide sur la voix, sans le plafond par défaut de 3 s
+class Brain(anthropic.LLM):
+    """Claude Haiku réfléchit par défaut, et cette réflexion compte dans max_tokens : une limite trop basse
+    coupe l'appel d'outil sans erreur. En effort low, il répond plus vite et choisit aussi bien ses outils."""
+
+    def chat(self, **kwargs):
+        return super().chat(**{"extra_kwargs": {"output_config": {"effort": "low"}}, **kwargs})
+
+
+# On n'interroge pas Claude avant la fin de la phrase : ça faisait perdre des réponses, et ne gagnait presque rien ici
+TURNS = {"turn_detection": "vad", "endpointing": {"min_delay": 0.2, "max_delay": 1.5},
+         "preemptive_generation": {"enabled": False}}
+
+
+def ear() -> gradium.STT:
+    # Gradium juge la fin de phrase sur 1 s de silence probable au lieu de 2 s
+    return gradium.STT(language="fr", vad_bucket=1, vad_threshold=0.7)
+
+
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
@@ -145,19 +193,33 @@ async def entrypoint(ctx: JobContext):
     agent = Aifred(ctx.room)
 
     session = AgentSession[tools.Visio](
-        stt=gradium.STT(language="fr"),
-        llm=anthropic.LLM(model=config.LLM_MODEL, max_tokens=400, caching="ephemeral"),
+        stt=ear(),
+        llm=Brain(model=config.LLM_MODEL, max_tokens=1024, caching="ephemeral"),
         tts=gradium.TTS(voice_id=config.VOICE_ID),
         vad=ctx.proc.userdata["vad"],
         userdata=tools.Visio(room=ctx.room, cameras=cameras),
-        # regarder, chercher_contact puis preparer_invitation dans la même réponse
+        # regarder puis preparer_invitation dans la même réponse
         max_tool_steps=5,
+        turn_handling=TURNS,
+        # Si Claude ne répond pas vite, on réessaie vite : l'attente par défaut est de 10 s par essai
+        conn_options=SessionConnectOptions(llm_conn_options=APIConnectOptions(max_retry=2, retry_interval=0.2, timeout=6.0)),
     )
 
     @session.on("agent_state_changed")
     def _on_state(ev):
         if ev.old_state == "speaking":
             agent.last_reply = time.time()
+
+    # Le délai entre la fin d'une phrase et le début de la réponse, pour la fiche technique
+    @session.on("metrics_collected")
+    def _on_metrics(ev):
+        m = ev.metrics
+        if m.type == "eou_metrics":
+            logger.info("délai fin de phrase %.2f s, transcription %.2f s", m.end_of_utterance_delay, m.transcription_delay)
+        elif m.type == "llm_metrics":
+            logger.info("délai Claude %.2f s, durée %.2f s", m.ttft, m.duration)
+        elif m.type == "tts_metrics":
+            logger.info("délai voix %.2f s", m.ttfb)
 
     ears: dict[str, AgentSession] = {}
     tasks: set[asyncio.Task] = set()
@@ -171,8 +233,8 @@ async def entrypoint(ctx: JobContext):
         if (participant.identity == first.identity or participant.identity in ears
                 or participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_AGENT):
             return
-        ear = ears[participant.identity] = AgentSession(stt=gradium.STT(language="fr"), vad=ctx.proc.userdata["vad"])
-        await ear.start(
+        session_ear = ears[participant.identity] = AgentSession(stt=ear(), vad=ctx.proc.userdata["vad"], turn_handling=TURNS)
+        await session_ear.start(
             agent=Oreilles(agent, participant),
             room=ctx.room,
             room_options=room_io.RoomOptions(
@@ -183,6 +245,24 @@ async def entrypoint(ctx: JobContext):
             ),
         )
 
+    async def _warm_up():
+        # La première requête à Claude est la plus lente (plusieurs secondes si les outils ont changé) :
+        # on la fait avant que quelqu'un parle, avec une longue marge
+        warm = agent.chat_ctx.copy()
+        warm.add_message(role="user", content="Test de connexion, réponds juste ok.")
+        try:
+            async with session.llm.chat(chat_ctx=warm, tools=agent.tools,
+                                        conn_options=APIConnectOptions(max_retry=1, timeout=30.0)) as stream:
+                async for _ in stream:
+                    break
+        except Exception as e:
+            logger.warning("préchauffage de Claude raté : %s", e)
+
+    async def _show_board():
+        # Le temps que sa page soit prête à recevoir le tableau
+        await asyncio.sleep(2)
+        await session.userdata.send_board()
+
     @ctx.room.on("participant_connected")
     def _on_join(participant: rtc.RemoteParticipant):
         role = participant.attributes.get("role")
@@ -191,13 +271,15 @@ async def entrypoint(ctx: JobContext):
             # Règle : face à un tiers, AIfred se présente comme une IA
             session.say(f"Bonjour {participant.name}. Je suis AIfred, une intelligence artificielle "
                         f"qui assiste l'équipe pendant cette visio.")
+        elif role == "equipe":
+            _run(_show_board())
         _run(_listen(participant))
 
     @ctx.room.on("participant_disconnected")
     def _on_leave(participant: rtc.RemoteParticipant):
-        ear = ears.pop(participant.identity, None)
-        if ear:
-            _run(ear.aclose())
+        session_ear = ears.pop(participant.identity, None)
+        if session_ear:
+            _run(session_ear.aclose())
 
     await session.start(
         agent=agent,
@@ -208,6 +290,7 @@ async def entrypoint(ctx: JobContext):
             close_on_disconnect=False,
         ),
     )
+    _run(_warm_up())
     for participant in ctx.room.remote_participants.values():
         _run(_listen(participant))
     db.log(ctx.room.name, "AIfred est entré dans la visio")

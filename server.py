@@ -112,7 +112,8 @@ def guest_info(code: str):
     inv = db.invitation(code)
     if not inv:
         raise HTTPException(404, "Ce lien n'est plus valable")
-    return {"name": inv["name"], "trade": inv["trade"], "reason": inv["reason"], "invited_by": inv["invited_by"]}
+    return {"name": inv["name"], "trade": inv["trade"], "reason": inv["reason"], "invited_by": inv["invited_by"],
+            "role": inv["role"]}
 
 
 class GuestJoin(BaseModel):

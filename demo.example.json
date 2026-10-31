@@ -1,10 +1,53 @@
 {
   "contacts": [
-    { "name": "Marc Dubois", "trade": "plombier", "role": "artisan", "phone": "+33600000001" },
-    { "name": "Karim Benali", "trade": "électricien", "role": "artisan", "phone": "+33600000002" },
-    { "name": "Julien Morel", "trade": "serrurier", "role": "artisan", "phone": "+33600000003" },
-    { "name": "James Whitmore", "trade": "propriétaire du Chalet Les Mélèzes", "role": "proprietaire", "phone": "+447700900001" },
-    { "name": "Hélène Garnier", "trade": "propriétaire de la Villa Les Oyats", "role": "proprietaire", "phone": "+33600000004" }
+    {
+      "name": "Marc Dubois",
+      "trade": "plombier",
+      "role": "artisan",
+      "phone": "+33600000001"
+    },
+    {
+      "name": "Karim Benali",
+      "trade": "électricien",
+      "role": "artisan",
+      "phone": "+33600000002"
+    },
+    {
+      "name": "Julien Morel",
+      "trade": "serrurier",
+      "role": "artisan",
+      "phone": "+33600000003"
+    },
+    {
+      "name": "James Whitmore",
+      "trade": "propriétaire du Chalet Les Mélèzes",
+      "role": "proprietaire",
+      "phone": "+447700900001"
+    },
+    {
+      "name": "Hélène Garnier",
+      "trade": "propriétaire de la Villa Les Oyats",
+      "role": "proprietaire",
+      "phone": "+33600000004"
+    },
+    {
+      "name": "Sébastien",
+      "trade": "employé, mise en place des appartements",
+      "role": "equipe",
+      "phone": "+33600000005"
+    },
+    {
+      "name": "Patrice",
+      "trade": "chauffagiste",
+      "role": "artisan",
+      "phone": "+33600000006"
+    },
+    {
+      "name": "Claire Roussel",
+      "trade": "propriétaire de REF415",
+      "role": "proprietaire",
+      "phone": "+33600000007"
+    }
   ],
   "houses": [
     {
@@ -18,6 +61,135 @@
       "address": "Avenue de la Pège, Saint-Hilaire-de-Riez",
       "owner": "Hélène Garnier",
       "notes": "Vanne d'arrêt : regard compteur devant le portail, clé dans la boîte à clés. Chauffe-eau : thermodynamique 200 L dans le cellier. Portail motorisé : boîtier Somfy, réarmement par le disjoncteur 6 du tableau. Seuil du mandat : 200 € HT."
+    },
+    {
+      "name": "REF415",
+      "address": "24 rue des Martyrs, 75009 Paris",
+      "owner": "Claire Roussel",
+      "notes": "Chauffage : pompe à chaleur Atlantic Alfea, module intérieur dans le placard de l'entrée. Compteur d'eau : placard de la cuisine. Tableau électrique : couloir, derrière la porte. Boîte à clés : devant la porte, code au dossier. Seuil du mandat : 300 € HT."
+    },
+    {
+      "name": "REF208",
+      "address": "8 rue de Charonne, 75011 Paris",
+      "notes": "Chauffage : pompe à chaleur Atlantic Alfea, module intérieur dans le placard de l'entrée. Seuil du mandat : 250 € HT."
+    },
+    {
+      "name": "REF127",
+      "address": "3 rue Lepic, 75018 Paris",
+      "notes": "Chauffage : chaudière gaz Saunier Duval dans la cuisine. Seuil du mandat : 200 € HT."
+    },
+    {
+      "name": "REF330",
+      "address": "15 rue Oberkampf, 75011 Paris",
+      "notes": "Chauffage : pompe à chaleur Atlantic Alfea, module intérieur dans le placard de l'entrée. Seuil du mandat : 300 € HT."
+    }
+  ],
+  "stays": [
+    {
+      "kind": "arrivee",
+      "at": "11:00",
+      "house": "REF415",
+      "guest": "Sarah Connor",
+      "transport": "Taxi ok",
+      "flight": "AF66",
+      "flight_status": "À l'heure, atterrissage prévu à CDG",
+      "staff": "Sébastien",
+      "status": "À préparer"
+    },
+    {
+      "kind": "arrivee",
+      "at": "16:00",
+      "house": "REF208",
+      "guest": "Famille Martin",
+      "transport": "Voiture",
+      "staff": "Véronique",
+      "status": "Prêt"
+    },
+    {
+      "kind": "depart",
+      "at": "10:00",
+      "house": "REF127",
+      "guest": "Famille Durand",
+      "transport": "Ménage à 11:00",
+      "staff": "Alexandre",
+      "status": "En cours"
+    },
+    {
+      "kind": "depart",
+      "at": "12:00",
+      "house": "REF330",
+      "guest": "M. Lefèvre",
+      "transport": "Clés en boîte",
+      "staff": "Christophe",
+      "status": "À venir"
+    }
+  ],
+  "interventions": [
+    {
+      "at": "2026-09-12",
+      "house": "REF208",
+      "equipment": "Chauffage : pompe à chaleur Atlantic Alfea",
+      "code": "E12",
+      "problem": "Sonde extérieure défectueuse",
+      "fix": "Sonde remplacée",
+      "by": "Patrice"
+    },
+    {
+      "at": "2026-03-03",
+      "house": "REF330",
+      "equipment": "Chauffage : pompe à chaleur Atlantic Alfea",
+      "code": "E7",
+      "problem": "Circulateur bloqué",
+      "fix": "Circulateur débloqué",
+      "by": "Patrice"
+    },
+    {
+      "at": "2026-01-20",
+      "house": "REF127",
+      "equipment": "Chauffage : chaudière gaz Saunier Duval",
+      "code": "F28",
+      "problem": "Défaut d'allumage",
+      "fix": "Électrode nettoyée",
+      "by": "Patrice"
+    },
+    {
+      "at": "2026-05-14",
+      "house": "Chalet Les Mélèzes",
+      "equipment": "Douche : mitigeur Grohe Grohtherm 1000",
+      "code": "",
+      "problem": "Fuite du mitigeur",
+      "fix": "Cartouche 47 175 remplacée",
+      "by": "Marc Dubois"
+    }
+  ],
+  "knowledge": [
+    {
+      "topic": "Procédure : panne de chauffage",
+      "text": "Vérifier le message d'erreur et le disjoncteur. Pompe à chaleur : pression normale du circuit entre 1,2 et 1,8 bar. Si le problème n'est pas réglé en 15 minutes, faire venir le chauffagiste en visio avant tout déplacement."
+    },
+    {
+      "topic": "Procédure : fuite d'eau",
+      "text": "Couper la vanne d'arrêt indiquée sur la fiche, prendre une photo, faire venir le plombier en visio. Prévenir le propriétaire au-dessus du seuil du mandat."
+    },
+    {
+      "topic": "Procédure : arrivée d'un voyageur",
+      "text": "Appartement vérifié une heure avant l'arrivée : chauffage, eau chaude, ménage, clés. Message de bienvenue au voyageur à l'atterrissage."
+    },
+    {
+      "topic": "Tarifs : ménage et linge",
+      "text": "Ménage de départ : 60 € pour un deux-pièces, 90 € pour un trois-pièces. Forfait linge : 15 € par personne."
+    },
+    {
+      "topic": "Tarifs : commission de la conciergerie",
+      "text": "Commission de 20 % sur les nuits réservées, intervention d'un artisan refacturée au propriétaire sans marge."
+    },
+    {
+      "topic": "Question fréquente : horaires d'arrivée et de départ",
+      "text": "Arrivée à partir de 15 h, départ avant 11 h. Arrivée anticipée possible si l'appartement est prêt, sans supplément."
+    },
+    {
+      "topic": "Question fréquente : clés perdues",
+      "text": "Remplacement facturé 80 € au voyageur. Le double est au bureau de la conciergerie."
     }
   ]
 }

@@ -73,6 +73,43 @@
   .card.error { border-color: var(--danger); }
   .card .link { word-break: break-all; color: var(--accent); }
   .card .close { float: right; background: none; color: var(--muted); padding: 0 0 0 8px; }
+  .card ul { margin: 4px 0 0; padding-left: 16px; }
+  .card small { color: var(--muted); }
+
+  /* Le tableau de la journée : à côté de la vidéo sur ordinateur, par-dessus sur téléphone */
+  .call { --board: min(48vw, 640px); }
+  .board { position: absolute; z-index: 1; top: calc(6px + env(safe-area-inset-top)); right: 6px;
+    bottom: calc(82px + env(safe-area-inset-bottom)); width: var(--board); background: var(--panel);
+    border-radius: 14px; padding: 16px; overflow-y: auto; }
+  .call.with-board .stage { margin-right: calc(var(--board) + 6px); }
+  .call.with-board .self { right: calc(var(--board) + 18px); }
+  .call.with-board .cards { right: calc(var(--board) + 128px); }
+  .call.with-board .subtitle { right: calc(var(--board) + 18px); }
+  .board-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+  .board h2 { margin: 0; font-size: 22px; letter-spacing: -0.3px; }
+  .board-sub { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .board-close { background: none; color: var(--muted); font-size: 18px; padding: 0 2px; }
+  .board h3 { margin: 18px 0 4px; font-size: 12px; font-weight: 650; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+  .stay { display: grid; grid-template-columns: 3.1rem minmax(0, 1fr) auto; gap: 10px; align-items: start;
+    padding: 10px 8px; border-top: 1px solid var(--line); border-radius: 8px; }
+  .stay time { font-weight: 650; font-variant-numeric: tabular-nums; }
+  .stay a { color: var(--accent); font-weight: 650; text-decoration: none; }
+  .stay small { display: block; color: var(--muted); font-size: 13px; }
+  .pill { font-size: 12.5px; font-weight: 600; padding: 3px 9px; border-radius: 99px; white-space: nowrap;
+    background: #2c343d; color: var(--muted); }
+  .pill.ok { background: rgba(76,195,138,.16); color: var(--ok); }
+  .pill.warn { background: rgba(233,180,76,.16); color: var(--accent); }
+  .pill.bad { background: rgba(229,83,75,.18); color: #ff8a83; }
+  .stay.changed { animation: changed 2.4s ease-out; }
+  @keyframes changed { 0%, 40% { background: rgba(233,180,76,.2); } 100% { background: transparent; } }
+  @media (max-width: 820px) {
+    .board { left: 6px; right: 6px; width: auto; z-index: 3; }
+    .call.with-board .stage { margin-right: 0; }
+    .call.with-board .self { right: 12px; }
+    .call.with-board .cards { right: 120px; }
+    .call.with-board .subtitle { right: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .stay.changed { animation: none; } }
   .bar { display: flex; justify-content: center; gap: 12px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
     background: var(--bg); }
   .bar button { width: 56px; height: 56px; border-radius: 50%; background: var(--panel); display: grid;
@@ -111,11 +148,19 @@
   <div class="stage" id="stage"></div>
   <div class="self" id="self"><video autoplay playsinline muted></video></div>
   <div class="cards" id="cards"></div>
+  <aside class="board" id="board" hidden>
+    <div class="board-head">
+      <div><h2>Ta journée</h2><p class="board-sub" id="board-sub"></p></div>
+      <button class="board-close" id="board-close" aria-label="Fermer le tableau">✕</button>
+    </div>
+    <div id="board-rows"></div>
+  </aside>
   <div class="subtitle" id="subtitle" hidden><span></span></div>
   <nav class="bar">
     <button id="mic" aria-label="Micro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
     <button id="cam" aria-label="Caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg></button>
     <button id="flip" aria-label="Retourner la caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2"/></svg></button>
+    <button id="board-toggle" aria-label="Afficher le tableau de la journée" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></button>
     <button id="share" aria-label="Partager le lien avec l'équipe" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></button>
     <button id="leave" class="leave" aria-label="Quitter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15c5-5 11-5 16 0l-2 3-3-1v-3a12 12 0 0 0-6 0v3l-3 1z"/></svg></button>
   </nav>
@@ -149,6 +194,8 @@ if (guestCode) {
   fetch('/api/guest/' + encodeURIComponent(guestCode)).then(async (r) => {
     const data = await r.json();
     if (!r.ok) throw new Error(data.detail);
+    // Un employé invité montre la panne ; un artisan ou un propriétaire se montre
+    if (data.role === 'equipe') facing = 'environment';
     $('#guest-text').textContent = `Bonjour ${data.name}. ${data.invited_by} vous invite à une visio pour : ${data.reason}.`;
   }).catch((e) => { $('#guest-error').textContent = e.message; $('#guest-join').disabled = true; });
   $('#guest-join').onclick = () => join('/api/guest/join', { code: guestCode }, '#guest-error', '#guest-join');
@@ -303,9 +350,60 @@ $('#unmute').onclick = () => room.startAudio();
 
 // ---------- Cartes envoyées par AIfred ----------
 
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+// ---------- Le tableau de la journée ----------
+
+const boardStatus = new Map();
+
+function pillClass(status) {
+  if (/prêt|réglé|fait|terminé|ok/i.test(status)) return 'ok';
+  if (/panne|erreur|urgent|problème|fuite/i.test(status)) return 'bad';
+  if (/à venir/i.test(status)) return '';
+  return 'warn';
+}
+
+function stayRow(s) {
+  const maps = s.address ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.address) : '';
+  const house = maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener">${esc(s.house)}</a>` : `<b>${esc(s.house)}</b>`;
+  const details = [s.transport, s.flight && 'vol ' + s.flight, s.staff].filter(Boolean).map(esc).join(' · ');
+  const changed = boardStatus.has(s.house) && boardStatus.get(s.house) !== s.status;
+  boardStatus.set(s.house, s.status);
+  return `<div class="stay${changed ? ' changed' : ''}"><time>${esc(s.at)}</time>`
+    + `<div>${house} ${esc(s.guest)}<small>${details}</small></div>`
+    + `<span class="pill ${pillClass(s.status)}">${esc(s.status)}</span></div>`;
+}
+
+function showBoard(rows) {
+  const arrivals = rows.filter((s) => s.kind === 'arrivee');
+  const departures = rows.filter((s) => s.kind === 'depart');
+  const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
+  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#board-sub').textContent = `${today} · ${plural(arrivals.length, 'arrivée')} · ${plural(departures.length, 'départ')}`;
+  $('#board-rows').innerHTML =
+    (arrivals.length ? `<h3>Arrivées</h3>${arrivals.map(stayRow).join('')}` : '')
+    + (departures.length ? `<h3>Départs</h3>${departures.map(stayRow).join('')}` : '');
+  // La première fois il s'ouvre ; ensuite il change sans se rouvrir si on l'a fermé
+  if ($('#board-toggle').hidden) {
+    $('#board-toggle').hidden = false;
+    toggleBoard(true);
+  }
+}
+
+function toggleBoard(open) {
+  $('#board').hidden = !open;
+  $('#call').classList.toggle('with-board', open);
+}
+$('#board-close').onclick = () => toggleBoard(false);
+$('#board-toggle').onclick = () => toggleBoard($('#board').hidden);
+
+function intervention(r) {
+  return `<li>${esc(r.house)}, ${esc(r.at)}${r.code ? ', code ' + esc(r.code) : ''} : ${esc(r.problem)}. ${esc(r.fix)} <small>par ${esc(r.by_name)}</small></li>`;
+}
+
 function addCard(c) {
+  if (c.type === 'journee') return showBoard(c.rows);
   const el = document.createElement('div');
-  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const img = (src) => src ? `<img src="${esc(src)}" alt="">` : '';
   const close = '<button class="close" aria-label="Fermer">✕</button>';
   if (c.type === 'photo') { el.className = 'card'; el.innerHTML = `${close}<strong>Photo prise</strong>${img(c.url)}`; }
@@ -322,6 +420,24 @@ function addCard(c) {
   } else if (c.type === 'cancelled') {
     document.querySelectorAll('.card.pending').forEach((p) => p.remove());
     return toast('Invitation annulée');
+  } else if (c.type === 'historique') {
+    el.className = 'card';
+    el.innerHTML = `${close}<strong>Historique de ${esc(c.title)}</strong>`
+      + (c.here.length ? `<ul>${c.here.map(intervention).join('')}</ul>` : 'Aucune intervention sur cet appartement.')
+      + (c.elsewhere.length ? `<br><small>Même équipement ailleurs :</small><ul>${c.elsewhere.map(intervention).join('')}</ul>` : '');
+  } else if (c.type === 'note') {
+    el.className = 'card sent';
+    el.innerHTML = `${close}<strong>Intervention notée · ${esc(c.title)}</strong>${esc(c.text)}`;
+  } else if (c.type === 'vol') {
+    el.className = 'card';
+    el.innerHTML = `${close}<strong>Vol ${esc(c.flight)} · ${esc(c.guest)}</strong>${esc(c.status)}`;
+  } else if (c.type === 'mail_pending') {
+    el.className = 'card pending';
+    el.innerHTML = `${close}<strong>En attente de ton « oui »</strong>Rapport de la journée par email`;
+  } else if (c.type === 'mail_sent') {
+    el.className = 'card sent';
+    el.innerHTML = `${close}<strong>${c.dry_run ? 'Mode essai : rien n\'est parti' : 'Email envoyé'}</strong>Rapport de la journée`;
+    document.querySelectorAll('.card.pending').forEach((p) => p.remove());
   } else if (c.type === 'error') { el.className = 'card error'; el.innerHTML = `${close}${esc(c.text)}`; }
   else return;
   el.querySelector('.close').onclick = () => el.remove();

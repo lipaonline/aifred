@@ -92,8 +92,10 @@ async def send_invitation(phone: str, params: list[str], image_url: str | None) 
         name, invited_by, reason, link = params
         body = {
             "accountId": config.ZERNIO_WHATSAPP_ACCOUNT_ID,
+            # Règle du hackathon : face à un tiers, AIfred se présente comme une IA
             "message": f"Bonjour {name}, {invited_by} vous demande de rejoindre une visio pour : {reason}.\n"
-                       f"Rejoindre : {link}",
+                       f"Rejoindre : {link}\n"
+                       f"Ce message vient d'AIfred, un assistant IA.",
         }
         if image_url:
             body |= {"attachmentUrl": image_url, "attachmentType": "image"}

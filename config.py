@@ -48,5 +48,10 @@ ZERNIO_SANDBOX = os.environ.get("ZERNIO_SANDBOX", "") in ("1", "true", "oui")
 WHATSAPP_TEMPLATE = os.environ.get("AIFRED_WHATSAPP_TEMPLATE", "aifred_visio")
 WHATSAPP_TEMPLATE_LANGUAGE = os.environ.get("AIFRED_WHATSAPP_TEMPLATE_LANGUAGE", "fr")
 
+# Le rapport de la journée par email. Sans ces trois réglages : mode essai, rien ne part.
+POSTMARK_API_TOKEN = os.environ.get("POSTMARK_API_TOKEN", "")
+POSTMARK_FROM = os.environ.get("POSTMARK_FROM", "")
+REPORT_EMAIL = os.environ.get("AIFRED_REPORT_EMAIL", "")
+
 # Durée de validité d'un lien d'invitation, en heures.
 INVITATION_HOURS = int(os.environ.get("AIFRED_INVITATION_HOURS", "12"))
