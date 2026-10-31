@@ -55,7 +55,8 @@ async def _call(method: str, path: str, body: dict | None = None) -> tuple[bool,
 
 
 async def _sandbox_conversation(digits: str) -> str | None:
-    """La conversation du bac à sable avec ce téléphone (il a écrit, donc elle existe)."""
+    """La conversation du bac à sable avec ce téléphone. L'activation ne la crée pas : le premier envoi
+    l'ouvre avec le seul modèle permis (sandbox_start), puis les messages libres passent."""
     ok, data = await _call(
         "GET", f"/v1/inbox/conversations?accountId={config.ZERNIO_WHATSAPP_ACCOUNT_ID}&platform=whatsapp&limit=100")
     if not ok:
@@ -63,7 +64,14 @@ async def _sandbox_conversation(digits: str) -> str | None:
     for conv in data.get("data", []):
         if phone_digits(str(conv.get("participantId", ""))) == digits:
             return conv["id"]
-    return None
+    ok, data = await _call("POST", "/v1/inbox/conversations", {
+        "accountId": config.ZERNIO_WHATSAPP_ACCOUNT_ID,
+        "participantId": digits,
+        "templateName": "sandbox_start",
+        "templateLanguage": "en",
+        "templateParams": [],
+    })
+    return data["data"]["conversationId"] if ok else None
 
 
 async def send_invitation(phone: str, params: list[str], image_url: str | None) -> dict:

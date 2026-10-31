@@ -109,7 +109,9 @@ on envoie un message libre (texte, photo et lien). Limites :
 - ce téléphone est activé d'avance, et l'activation dure 7 jours ;
 - il doit **avoir écrit au numéro du bac à sable dans les 24 dernières heures** : avant chaque démo,
   envoie « bonjour » depuis ce téléphone ;
-- le message arrive d'un numéro américain au nom de Zernio, pas d'AIfred.
+- le message arrive d'un numéro américain au nom de Zernio, pas d'AIfred ;
+- au tout premier envoi, le téléphone reçoit d'abord le message modèle du bac à sable, qui ouvre la
+  conversation.
 
 Mise en place :
 
