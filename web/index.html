@@ -3,123 +3,220 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#101418">
+<meta name="theme-color" content="#15181B">
 <title>AIfred</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <!-- Même SDK que LearnFloo (livekit-client 2.22.2), sans build : la page est servie telle quelle -->
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.22.2/dist/livekit-client.umd.js"></script>
 <style>
+  /* La maquette « Deux boutons, un talkie qui voit » : orange de chantier pour l'équipe, graphite pour AIfred */
   :root {
-    --bg: #101418; --panel: #1b2128; --line: #2c343d; --text: #eef2f5; --muted: #9aa6b2;
-    --accent: #e9b44c; --ok: #4cc38a; --danger: #e5534b;
+    --ground: #ECEEE9; --surface: #FFFFFF; --ink: #15181B; --ink-2: #4A5157; --line: #D2D6CE; --line-soft: #E2E5DF;
+    --hivis: #F76707; --on-hivis: #15181B; --soft-hivis: #FFE6D3;
+    --steel: #2B5FD9; --soft-steel: #E1E9FB; --graphite: #1C2026; --on-graphite: #F2F4F1; --ring: #8C96A3;
+    --danger: #C92A2A; --ok: #2B8A3E; --soft-ok: #E3F5E7; --soft-danger: #FBE6E6;
+    --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   }
+  @media (prefers-color-scheme: dark) { :root {
+    --ground: #111315; --surface: #1A1D21; --ink: #ECEEEA; --ink-2: #A8AFB5; --line: #30353A; --line-soft: #24282C;
+    --hivis: #FF7A1A; --on-hivis: #15181B; --soft-hivis: #3B2515;
+    --steel: #7EA2FF; --soft-steel: #1D2943; --graphite: #2A3038; --on-graphite: #F2F4F1; --ring: #6F7985;
+    --danger: #FF6B6B; --ok: #69DB7C; --soft-ok: #18301E; --soft-danger: #3A1D1D; color-scheme: dark } }
+
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
-    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  html, body { margin: 0; height: 100%; background: var(--ground); color: var(--ink);
+    font: 15px/1.45 var(--f-body); -webkit-text-size-adjust: 100%; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; background: none; }
+  p, h1, h2, h3, h4 { margin: 0; }
   [hidden] { display: none !important; }
+  :focus-visible { outline: 3px solid var(--steel); outline-offset: 2px; }
 
   /* Accueil */
-  .welcome { min-height: 100%; display: flex; flex-direction: column; justify-content: center;
-    gap: 16px; padding: 24px 16px; max-width: 420px; margin: 0 auto; }
-  .brand { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
-  .brand b { color: var(--accent); }
-  .lead { color: var(--muted); margin: 0; }
-  .welcome label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
-  .welcome input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--line);
-    background: var(--panel); color: var(--text); font: inherit; }
-  .primary { width: 100%; padding: 16px; border-radius: 14px; background: var(--accent); color: #1a1405;
-    font-weight: 650; font-size: 17px; }
-  .primary:disabled { opacity: .5; }
-  .error { color: var(--danger); min-height: 1.4em; margin: 0; }
-  .ai-note { font-size: 14px; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 10px; }
+  .welcome { min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 16px;
+    padding: 24px max(16px, env(safe-area-inset-left, 0px)); max-width: 440px; margin: 0 auto; }
+  .brand { font-family: var(--f-display); font-stretch: 125%; font-weight: 850; font-size: 44px; line-height: 1; text-transform: uppercase; }
+  .brand b { color: var(--hivis); font-weight: inherit; }
+  .lead { color: var(--ink-2); font-size: 16px; }
+  .lbl { display: block; font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 6px; }
+  .field { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; }
+  .btn { min-height: 46px; padding: 0 14px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 700; border: 1.5px solid var(--line); background: var(--surface); width: 100%; }
+  .btn.pri { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .error { color: var(--danger); min-height: 1.4em; }
+  .ai-note { font-size: 13px; background: var(--soft-steel); border-radius: 10px; padding: 8px 10px; }
+  .guest-photo { width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px; }
 
-  /* Visio */
-  .call { position: fixed; inset: 0; display: flex; flex-direction: column; }
-  .stage { flex: 1; display: grid; gap: 6px; padding: 6px; grid-template-columns: 1fr; grid-auto-rows: 1fr;
-    min-height: 0; }
-  .stage[data-count="2"], .stage[data-count="3"], .stage[data-count="4"] { grid-template-columns: 1fr 1fr; }
-  .stage[data-count="2"] { grid-template-columns: 1fr; }
-  .tile { position: relative; background: var(--panel); border-radius: 14px; overflow: hidden;
-    display: flex; align-items: center; justify-content: center; min-height: 0; }
-  .tile video { width: 100%; height: 100%; object-fit: cover; display: none; }
-  .tile.has-video video { display: block; }
-  .tile.has-video .avatar { display: none; }
-  .avatar { width: 84px; height: 84px; border-radius: 50%; background: #2c343d; display: grid;
-    place-items: center; font-size: 28px; font-weight: 650; }
-  .tile.agent .avatar { background: radial-gradient(circle at 35% 30%, #ffd98a, var(--accent) 55%, #8a6015);
-    color: #1a1405; font-size: 22px; }
-  .tile.agent.speaking .avatar { animation: pulse 1s ease-in-out infinite; }
-  .tile.speaking { outline: 3px solid var(--accent); outline-offset: -3px; }
-  @keyframes pulse { 50% { transform: scale(1.12); box-shadow: 0 0 0 14px rgba(233,180,76,.15); } }
-  .name { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.55); padding: 3px 9px;
-    border-radius: 99px; font-size: 13px; }
-  .self { position: absolute; right: 12px; top: calc(12px + env(safe-area-inset-top)); width: 96px;
-    aspect-ratio: 3/4; border-radius: 12px; overflow: hidden; background: var(--panel);
-    border: 2px solid rgba(255,255,255,.2); z-index: 2; }
-  .self video { width: 100%; height: 100%; object-fit: cover; }
-  .self.front video { transform: scaleX(-1); }
-  .subtitle { position: absolute; left: 12px; right: 12px; bottom: calc(96px + env(safe-area-inset-bottom));
-    text-align: center; z-index: 2; pointer-events: none; }
-  .subtitle span { background: rgba(0,0,0,.7); padding: 6px 12px; border-radius: 10px; font-size: 15px;
-    display: inline-block; max-width: 100%; }
-  .cards { position: absolute; left: 12px; right: 120px; top: calc(12px + env(safe-area-inset-top)); z-index: 2;
-    display: flex; flex-direction: column; gap: 8px; max-height: 55%; overflow-y: auto; }
-  .card { background: rgba(27,33,40,.95); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
-    font-size: 14px; }
-  .card strong { display: block; margin-bottom: 2px; }
-  .card img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-top: 6px; }
-  .card.pending { border-color: var(--accent); }
-  .card.sent { border-color: var(--ok); }
-  .card.error { border-color: var(--danger); }
-  .card .link { word-break: break-all; color: var(--accent); }
-  .card .close { float: right; background: none; color: var(--muted); padding: 0 0 0 8px; }
+  /* L'application : une colonne de téléphone, et le tableau à côté sur ordinateur */
+  .app { position: fixed; inset: 0; display: flex; justify-content: center; gap: 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+  .column { flex: 1 1 auto; max-width: 480px; min-width: 0; display: flex; flex-direction: column; gap: 10px; position: relative; }
+  .app[data-mode="visio"] .column { max-width: 780px; }
+  .p-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .p-camp { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); min-width: 0; }
+  .p-camp b { display: block; color: var(--ink); font-family: var(--f-display); font-size: 16px; letter-spacing: 0; text-transform: none; font-stretch: 105%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .head-right { display: flex; align-items: center; gap: 8px; flex: none; }
+  .who { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px 3px 3px; font-size: 12px; font-weight: 600; }
+  .av { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; background: var(--line); color: var(--ink); flex: none; }
+  .round { width: 34px; height: 34px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; }
+  .round svg { width: 17px; height: 17px; }
+  .rec { font-family: var(--f-mono); font-size: 10px; letter-spacing: .04em; padding: 4px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--ink-2); white-space: nowrap; }
+  .rec.on { border-color: var(--steel); color: var(--steel); background: var(--soft-steel); }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--line-soft); border-radius: 12px; padding: 3px; gap: 3px; flex: none; }
+  .seg button { height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--ink-2); transition: background .2s, color .2s; }
+  .seg button.sel { background: var(--ink); color: var(--ground); }
+  .seg svg { width: 15px; height: 15px; }
+
+  /* Les cartes d'AIfred */
+  .feed { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; justify-content: flex-end; }
+  .feed > :first-child { margin-top: auto; }
+  .feed-empty { color: var(--ink-2); font-size: 13.5px; text-align: center; padding: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; font-size: 13.5px; flex: none; }
+  .card strong { display: block; margin-bottom: 2px; font-size: 13.5px; }
+  .card img { width: 100%; max-height: 170px; object-fit: cover; border-radius: 8px; margin-top: 6px; display: block; }
+  .card.sent { border-color: var(--ok); background: var(--soft-ok); }
+  .card.error { border-color: var(--danger); background: var(--soft-danger); }
+  .card .link { word-break: break-all; color: var(--steel); }
+  .card .close { float: right; color: var(--ink-2); padding: 0 0 0 8px; }
   .card ul { margin: 4px 0 0; padding-left: 16px; }
-  .card small { color: var(--muted); }
+  .card small { color: var(--ink-2); }
+  .card .btn { margin-top: 8px; }
 
-  /* Le tableau de la journée : à côté de la vidéo sur ordinateur, par-dessus sur téléphone */
-  .call { --board: min(48vw, 640px); }
-  .board { position: absolute; z-index: 1; top: calc(6px + env(safe-area-inset-top)); right: 6px;
-    bottom: calc(82px + env(safe-area-inset-bottom)); width: var(--board); background: var(--panel);
-    border-radius: 14px; padding: 16px; overflow-y: auto; }
-  .call.with-board .stage { margin-right: calc(var(--board) + 6px); }
-  .call.with-board .self { right: calc(var(--board) + 18px); }
-  .call.with-board .cards { right: calc(var(--board) + 128px); }
-  .call.with-board .subtitle { right: calc(var(--board) + 18px); }
+  /* L'état du canal et d'AIfred */
+  .st { flex: none; min-height: 92px; border-radius: 16px; padding: 12px; background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+  .st.o { background: var(--soft-hivis); border-color: var(--hivis); }
+  .st.s { background: var(--soft-steel); border-color: var(--steel); }
+  .st .h { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; }
+  .st .h small { font-family: var(--f-mono); font-size: 10.5px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
+  .st p { font-size: 13px; color: var(--ink-2); }
+  .st .q { font-size: 15px; color: var(--ink); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hivis); display: inline-block; margin-right: 6px; animation: blink 1s infinite; }
+  .dot.s { background: var(--steel); }
+  @keyframes blink { 50% { opacity: .25; } }
+  .wave { display: flex; align-items: center; gap: 3px; height: 22px; }
+  .wave i { width: 4px; border-radius: 2px; background: var(--ink); height: 30%; animation: wv .9s ease-in-out infinite; }
+  .st.s .wave i { background: var(--steel); }
+  .wave i:nth-child(2n) { animation-delay: -.3s; } .wave i:nth-child(3n) { animation-delay: -.6s; } .wave i:nth-child(5n) { animation-delay: -.45s; }
+  @keyframes wv { 0%, 100% { height: 25%; } 50% { height: 95%; } }
+
+  /* Les deux boutons : l'état change leur forme, pas seulement leur couleur */
+  .pads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 150px; flex: none; }
+  .pad { border-radius: 22px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left;
+    transition: transform .15s, box-shadow .15s, background .2s, color .2s; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  .pad .l { display: block; font-family: var(--f-display); font-weight: 850; font-size: 22px; font-stretch: 115%; letter-spacing: .01em; line-height: 1; }
+  .pad .sub { display: block; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; margin-top: 4px; }
+  .pad svg { width: 26px; height: 26px; }
+  .pad.team { background: var(--hivis); color: var(--on-hivis); }
+  .pad.ai { background: var(--graphite); color: var(--on-graphite); box-shadow: inset 0 0 0 2px var(--ring); }
+  .pad.down { transform: scale(.95); box-shadow: 0 0 0 6px var(--soft-hivis), inset 0 0 0 3px var(--on-hivis); }
+  .pad.ai.listen { transform: scale(.97); box-shadow: 0 0 0 6px var(--soft-steel), inset 0 0 0 3px var(--steel); }
+  .pad.ai.speak { box-shadow: 0 0 0 6px var(--soft-steel), inset 0 0 0 3px var(--steel); }
+  .pad.lock, .pad.ai.lock { background: var(--line-soft); color: var(--ink-2); box-shadow: inset 0 0 0 2px var(--line); }
+  .pad.busy, .pad.ai.busy { background: repeating-linear-gradient(-45deg, var(--line-soft) 0 10px, var(--line) 10px 20px); color: var(--ink); box-shadow: none; }
+  .metal { background: radial-gradient(circle at 30% 25%, #FFFFFF 0, #D7DCE1 18%, #8E98A3 45%, #5D6670 62%, #C4CAD0 80%, #737D88 100%); background-size: 160% 160%; animation: metal 7s ease-in-out infinite alternate; }
+  @keyframes metal { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
+  .orb { width: 28px; height: 28px; border-radius: 50%; display: block; }
+
+  /* La visio */
+  .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .mains { flex: 1; min-height: 0; display: flex; }
+  .minis { flex: none; height: 92px; display: flex; gap: 8px; overflow-x: auto; }
+  .minis .tile { flex: 1 0 96px; max-width: 240px; }
+  .tile { position: relative; flex: 1; min-width: 0; border-radius: 16px; overflow: hidden; background: var(--line-soft); display: grid; place-items: center; }
+  .tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; background: #000; }
+  .tile.has-video video { display: block; }
+  .tile.has-video .big-av { display: none; }
+  .tile.mirror video { transform: scaleX(-1); }
+  .big-av { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--line); }
+  .mains .big-av { width: 84px; height: 84px; font-size: 30px; }
+  .tile.agent { background: transparent; }
+  .tile.agent .big-av { display: none; }
+  .tile.agent::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 30% 25%, #FFFFFF 0, #D7DCE1 18%, #8E98A3 45%, #5D6670 62%, #C4CAD0 80%, #737D88 100%); background-size: 160% 160%; animation: metal 7s ease-in-out infinite alternate; }
+  .tile.speaking { box-shadow: inset 0 0 0 3px var(--hivis); }
+  .tile.agent.speaking { box-shadow: inset 0 0 0 3px var(--steel); }
+  .tile-name { position: absolute; left: 8px; bottom: 8px; background: rgba(10,12,14,.65); color: #F2F4F1; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 8px; max-width: calc(100% - 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .eye { position: absolute; right: 8px; top: 8px; display: none; gap: 6px; align-items: center; background: var(--graphite); color: var(--on-graphite); font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 99px; z-index: 1; }
+  .eye svg { width: 14px; height: 14px; }
+  .frame { position: absolute; inset: 14%; border: 2px solid #F2F4F1; border-radius: 10px; box-shadow: 0 0 0 999px rgba(10,12,14,.25); display: none; }
+  .tile.looking .eye { display: flex; }
+  .tile.looking .frame { display: block; }
+  .caption { flex: none; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  .caption b { font-size: 11px; font-family: var(--f-mono); letter-spacing: .04em; color: var(--steel); }
+  .vcards { position: absolute; left: 8px; right: 8px; top: 96px; max-height: 42%; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; z-index: 2; }
+  .vbar { flex: none; display: grid; grid-template-columns: 44px 44px minmax(0, 1fr) 44px 44px; gap: 8px; align-items: center; }
+  .ic { width: 44px; height: 44px; border-radius: 50%; background: var(--line-soft); display: grid; place-items: center; }
+  .ic svg { width: 20px; height: 20px; }
+  .ic.off { background: var(--soft-danger); color: var(--danger); }
+  .ic.red { background: var(--danger); color: #FFFFFF; }
+  .vpad { height: 56px; flex-direction: row; align-items: center; justify-content: center; gap: 8px; border-radius: 18px; padding: 0 10px; width: 100%; }
+  .vpad .l { font-size: 17px; }
+  .vpad .sub { font-size: 9.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vpad .orb { width: 22px; height: 22px; flex: none; }
+  .vpad > span:last-child { min-width: 0; }
+
+  /* La carte à valider */
+  .confirm { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px; border: 1.5px solid var(--ink); padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 18px 40px -18px rgba(0,0,0,.5); z-index: 4; }
+  .app[data-mode="canal"] .confirm { bottom: 160px; }
+  .app[data-mode="visio"] .confirm { bottom: 66px; }
+  .confirm .h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .confirm .h b { font-size: 15px; }
+  .tag { font-family: var(--f-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; color: var(--steel); border: 1px solid var(--steel); white-space: nowrap; }
+  .wa { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; }
+  .wa img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; }
+  .wa p { font-size: 12.5px; color: var(--ink-2); }
+  .wa p b { color: var(--ink); }
+  .say { text-align: center; font-size: 12px; color: var(--ink-2); }
+
+  /* La feuille « Lancer une visio » et la fiche */
+  .dim { position: fixed; inset: 0; background: rgba(10,12,14,.45); z-index: 9; }
+  .sheet { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: min(100%, 480px); max-height: 92%; overflow-y: auto; background: var(--surface); border-radius: 24px 24px 0 0;
+    padding: 10px 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px; z-index: 10; }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); align-self: center; flex: none; }
+  .sheet h4, .fiche h4 { font-family: var(--f-display); font-size: 20px; font-stretch: 110%; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: 13.5px; }
+  .row:last-child { border-bottom: 0; }
+  .row .grow { flex: 1; min-width: 0; }
+  .row small { color: var(--ink-2); display: block; font-size: 11.5px; }
+  .row input { width: 22px; height: 22px; accent-color: var(--ink); flex: none; }
+  .fiche-screen { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .fiche { background: var(--surface); border-radius: 18px; border: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+  .fr { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; align-items: center; }
+  .fr:last-child { border-bottom: 0; }
+  .fr > span { font-family: var(--f-mono); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); }
+  .fr input { width: 100%; border: 0; background: transparent; color: var(--ink); font: inherit; padding: 2px 0; }
+  .fr input:not([readonly]) { border-bottom: 1.5px solid var(--steel); }
+  .fr img { height: 64px; border-radius: 8px; }
+  .hint { text-align: center; font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-2); letter-spacing: .04em; }
+
+  /* Le tableau de la journée : à côté sur ordinateur, par-dessus sur téléphone */
+  .board { flex: 1 1 auto; max-width: 620px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; overflow-y: auto; }
   .board-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
-  .board h2 { margin: 0; font-size: 22px; letter-spacing: -0.3px; }
-  .board-sub { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
-  .board-close { background: none; color: var(--muted); font-size: 18px; padding: 0 2px; }
-  .board h3 { margin: 18px 0 4px; font-size: 12px; font-weight: 650; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
-  .stay { display: grid; grid-template-columns: 3.1rem minmax(0, 1fr) auto; gap: 10px; align-items: start;
-    padding: 10px 8px; border-top: 1px solid var(--line); border-radius: 8px; }
-  .stay time { font-weight: 650; font-variant-numeric: tabular-nums; }
-  .stay a { color: var(--accent); font-weight: 650; text-decoration: none; }
-  .stay small { display: block; color: var(--muted); font-size: 13px; }
-  .pill { font-size: 12.5px; font-weight: 600; padding: 3px 9px; border-radius: 99px; white-space: nowrap;
-    background: #2c343d; color: var(--muted); }
-  .pill.ok { background: rgba(76,195,138,.16); color: var(--ok); }
-  .pill.warn { background: rgba(233,180,76,.16); color: var(--accent); }
-  .pill.bad { background: rgba(229,83,75,.18); color: #ff8a83; }
+  .board h2 { font-family: var(--f-display); font-stretch: 110%; font-size: 24px; font-weight: 800; }
+  .board-sub { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+  .board-close { color: var(--ink-2); font-size: 18px; padding: 0 2px; }
+  .board h3 { margin: 16px 0 4px; font-family: var(--f-mono); font-size: 11px; font-weight: 500; letter-spacing: .08em; color: var(--ink-2); text-transform: uppercase; }
+  .stay { display: grid; grid-template-columns: 3.1rem minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 6px; border-top: 1px solid var(--line-soft); border-radius: 8px; }
+  .stay time { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stay a { color: var(--steel); font-weight: 700; text-decoration: none; }
+  .stay small { display: block; color: var(--ink-2); font-size: 12.5px; }
+  .pill { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; white-space: nowrap; background: var(--line-soft); color: var(--ink-2); }
+  .pill.ok { background: var(--soft-ok); color: var(--ok); }
+  .pill.warn { background: var(--soft-hivis); color: var(--ink); }
+  .pill.bad { background: var(--soft-danger); color: var(--danger); }
   .stay.changed { animation: changed 2.4s ease-out; }
-  @keyframes changed { 0%, 40% { background: rgba(233,180,76,.2); } 100% { background: transparent; } }
-  @media (max-width: 820px) {
-    .board { left: 6px; right: 6px; width: auto; z-index: 3; }
-    .call.with-board .stage { margin-right: 0; }
-    .call.with-board .self { right: 12px; }
-    .call.with-board .cards { right: 120px; }
-    .call.with-board .subtitle { right: 12px; }
+  @keyframes changed { 0%, 40% { background: var(--soft-hivis); } 100% { background: transparent; } }
+  @media (max-width: 860px) {
+    .board { position: fixed; z-index: 8; left: 8px; right: 8px; top: calc(8px + env(safe-area-inset-top, 0px)); bottom: calc(8px + env(safe-area-inset-bottom, 0px)); max-width: none; box-shadow: 0 18px 40px -18px rgba(0,0,0,.5); }
   }
-  @media (prefers-reduced-motion: reduce) { .stay.changed { animation: none; } }
-  .bar { display: flex; justify-content: center; gap: 12px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
-    background: var(--bg); }
-  .bar button { width: 56px; height: 56px; border-radius: 50%; background: var(--panel); display: grid;
-    place-items: center; }
-  .bar button.off { background: #3a2a2a; color: var(--danger); }
-  .bar button.leave { background: var(--danger); }
-  .bar svg { width: 24px; height: 24px; }
-  .toast { position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); transform: translateX(-50%);
-    background: var(--panel); border: 1px solid var(--line); padding: 10px 14px; border-radius: 10px; z-index: 5; }
-  .unmute { position: fixed; inset: auto 16px calc(100px + env(safe-area-inset-bottom)); z-index: 6; }
+  .toast { position: fixed; left: 50%; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--ground); padding: 8px 12px; border-radius: 10px; z-index: 20; font-size: 13.5px; max-width: calc(100% - 32px); }
+  .unmute { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(176px + env(safe-area-inset-bottom, 0px)); width: min(calc(100% - 32px), 448px); z-index: 21; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -127,27 +224,97 @@
 <!-- Accueil de l'équipe -->
 <section class="welcome" id="team-home" hidden>
   <div class="brand">A<b>I</b>fred</div>
-  <p class="lead">L'assistant de l'équipe, dans la visio. Montre la panne, il s'occupe du reste.</p>
-  <div><label for="name">Ton prénom</label><input id="name" autocomplete="given-name" maxlength="40"></div>
-  <div id="code-row" hidden><label for="code">Code de l'équipe</label><input id="code" autocomplete="off"></div>
-  <button class="primary" id="start">Démarrer une visio</button>
+  <p class="lead">Le canal de l'équipe, avec des yeux. Tout le monde se parle, et AIfred écoute celui qui l'active.</p>
+  <div><label class="lbl" for="name">Ton prénom</label><input class="field" id="name" autocomplete="given-name" maxlength="40"></div>
+  <div id="code-row" hidden><label class="lbl" for="code">Code de l'équipe</label><input class="field" id="code" autocomplete="off"></div>
+  <button class="btn pri" id="start">Entrer sur le canal</button>
   <p class="error" id="team-error"></p>
 </section>
 
 <!-- Accueil d'un invité (lien reçu par WhatsApp) -->
 <section class="welcome" id="guest-home" hidden>
   <div class="brand">A<b>I</b>fred</div>
+  <h1 id="guest-title" style="font-family: var(--f-display); font-size: 22px; font-stretch: 108%;"></h1>
   <p class="lead" id="guest-text"></p>
-  <p class="ai-note">Une intelligence artificielle, AIfred, assiste l'équipe pendant cette visio. Votre caméra et votre micro seront utilisés.</p>
-  <button class="primary" id="guest-join">Rejoindre la visio</button>
+  <img class="guest-photo" id="guest-photo" alt="La photo envoyée par l'équipe" hidden>
+  <p class="ai-note">Une intelligence artificielle, AIfred, assiste l'équipe pendant cette visio. Elle écoute seulement la personne qui clique sur son bouton, et tout le monde entend ses réponses.</p>
+  <button class="btn pri" id="guest-join">Rejoindre avec la caméra</button>
+  <button class="btn" id="guest-audio">Micro seul</button>
   <p class="error" id="guest-error"></p>
 </section>
 
-<!-- La visio -->
-<section class="call" id="call" hidden>
-  <div class="stage" id="stage"></div>
-  <div class="self" id="self"><video autoplay playsinline muted></video></div>
-  <div class="cards" id="cards"></div>
+<!-- Fin de la visio pour un invité -->
+<section class="welcome" id="guest-end" hidden>
+  <div class="brand">A<b>I</b>fred</div>
+  <p class="lead">La visio est terminée. Merci, vous pouvez fermer cette page.</p>
+</section>
+
+<main class="app" id="app" data-mode="canal" hidden>
+  <div class="column">
+    <header class="p-head">
+      <p class="p-camp" id="head-kicker">Canal · Équipe<b id="head-title">La conciergerie</b></p>
+      <div class="head-right">
+        <span class="rec" id="rec" hidden></span>
+        <button class="round" id="board-toggle" aria-label="Afficher le tableau de la journée" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></button>
+        <span class="who"><span class="av" id="who-av"></span><span id="who-name"></span></span>
+      </div>
+    </header>
+
+    <div class="seg" id="seg">
+      <button id="seg-t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="7" width="12" height="14" rx="2"/><path d="M9 7V3M9 12h6M9 16h6"/></svg>Talkie</button>
+      <button id="seg-v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg>Visio</button>
+    </div>
+
+    <!-- Talkie -->
+    <div class="feed" id="canal-feed"><p class="feed-empty" id="feed-empty">Touche AIfred, demande-lui « C'est quoi ma journée ? », puis retouche-le.</p></div>
+    <div class="st" id="status" aria-live="polite"></div>
+    <div class="pads" id="pads">
+      <button class="pad team" id="pad-team"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="7" width="12" height="14" rx="2"/><path d="M9 7V3M9 12h6M9 16h6"/></svg><span><span class="l">ÉQUIPE</span><span class="sub" id="team-sub">Micro ouvert</span></span></button>
+      <button class="pad ai" data-ai><span class="orb metal"></span><span><span class="l">AIFRED</span><span class="sub" data-ai-sub>Toucher pour parler</span></span></button>
+    </div>
+
+    <!-- Visio -->
+    <div class="stage" id="stage" hidden>
+      <div class="mains" id="mains"></div>
+      <div class="minis" id="minis"></div>
+    </div>
+    <div class="vcards" id="visio-feed" hidden></div>
+    <p class="caption" id="caption" hidden></p>
+    <div class="vbar" id="vbar" hidden>
+      <button class="ic" id="mic" aria-label="Micro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <button class="ic" id="cam" aria-label="Caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></button>
+      <button class="pad ai vpad" data-ai id="vpad"><span class="orb metal"></span><span><span class="l">AIFRED</span><span class="sub" data-ai-sub>Toucher pour parler</span></span></button>
+      <button class="ic" id="flip" aria-label="Retourner la caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h12l-3-3M20 17H8l3 3"/></svg></button>
+      <button class="ic red" id="leave" aria-label="Raccrocher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14c5-5 13-5 18 0l-2 3-4-1v-2a9 9 0 0 0-6 0v2l-4 1z"/></svg></button>
+    </div>
+
+    <!-- La fiche d'intervention, à la fin d'une visio -->
+    <div class="fiche-screen" id="fiche-screen" hidden>
+      <div class="fiche">
+        <h4 id="fiche-title">Fiche d'intervention</h4>
+        <label class="fr"><span>Maison</span><input data-fiche="maison" readonly></label>
+        <label class="fr"><span>Équipement</span><input data-fiche="equipement" readonly></label>
+        <label class="fr"><span>Panne</span><input data-fiche="panne" readonly></label>
+        <div class="fr" id="fiche-photo-row" hidden><span>Photo</span><img id="fiche-photo" alt="La photo prise pendant la visio"></div>
+        <label class="fr"><span>Diagnostic</span><input data-fiche="diagnostic" readonly></label>
+        <label class="fr"><span>Solution</span><input data-fiche="solution" readonly></label>
+        <label class="fr"><span>Par</span><input data-fiche="par" readonly></label>
+      </div>
+      <div class="btns"><button class="btn" id="fiche-edit">Corriger</button><button class="btn pri" id="fiche-ok">Valider</button></div>
+      <button class="btn" id="fiche-skip">Ne pas garder cette fiche</button>
+      <p class="hint">Retour au talkie après validation</p>
+      <p class="error" id="fiche-error"></p>
+    </div>
+
+    <!-- La carte à valider -->
+    <div class="confirm" id="confirm" hidden>
+      <p class="h"><b id="confirm-title"></b><span class="tag" id="confirm-tag"></span></p>
+      <div class="wa"><img id="confirm-photo" alt="La photo jointe" hidden><div><p><b id="confirm-what"></b></p><p id="confirm-text"></p></div></div>
+      <div class="btns" id="confirm-btns"><button class="btn" id="confirm-no">Annuler</button><button class="btn pri" id="confirm-yes">Envoyer</button></div>
+      <p class="say" id="confirm-say">ou touche AIfred et dis « oui »</p>
+    </div>
+  </div>
+
   <aside class="board" id="board" hidden>
     <div class="board-head">
       <div><h2>Ta journée</h2><p class="board-sub" id="board-sub"></p></div>
@@ -155,18 +322,21 @@
     </div>
     <div id="board-rows"></div>
   </aside>
-  <div class="subtitle" id="subtitle" hidden><span></span></div>
-  <nav class="bar">
-    <button id="mic" aria-label="Micro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
-    <button id="cam" aria-label="Caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg></button>
-    <button id="flip" aria-label="Retourner la caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2"/></svg></button>
-    <button id="board-toggle" aria-label="Afficher le tableau de la journée" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></button>
-    <button id="share" aria-label="Partager le lien avec l'équipe" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></button>
-    <button id="leave" class="leave" aria-label="Quitter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15c5-5 11-5 16 0l-2 3-3-1v-3a12 12 0 0 0-6 0v3l-3 1z"/></svg></button>
-  </nav>
+</main>
+
+<!-- La feuille « Lancer une visio » -->
+<div class="dim" id="dim" hidden></div>
+<section class="sheet" id="sheet" hidden aria-label="Lancer une visio">
+  <span class="grab"></span>
+  <h4>Lancer une visio</h4>
+  <div><label class="lbl" for="sujet">Sujet</label><input class="field" id="sujet" maxlength="100" placeholder="REF415 · chauffage"></div>
+  <div><span class="lbl">Inviter</span><div id="invites"></div></div>
+  <label class="row"><span class="grow">Caméra arrière<small>Pour filmer la panne</small></span><input type="checkbox" id="rear" checked></label>
+  <button class="btn pri" id="launch">Lancer la visio</button>
+  <button class="btn" id="sheet-close">Rester sur le canal</button>
 </section>
 
-<button class="primary unmute" id="unmute" hidden>Activer le son</button>
+<button class="btn pri unmute" id="unmute" hidden>Activer le son</button>
 
 <script>
 const LK = LivekitClient;
@@ -177,9 +347,62 @@ const store = {
   get: (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
   set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
 };
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
 let room = null;
+let mode = 'canal';
+let sujet = '';
+let leaving = false;          // on quitte la salle exprès, pour passer à une autre
 let facing = guestCode ? 'user' : 'environment';  // l'équipe montre la panne, l'invité se montre
+let guestRole = '';
+let audioOnly = false;
+let micWanted = true;         // le micro de la personne, indépendamment d'AIfred
+let speakers = [];            // qui parle en ce moment
+let heard = '';               // la phrase entendue en direct
+let reply = '';               // la réponse d'AIfred
+let pinned = null;            // la tuile choisie par un toucher
+let pending = null;           // la carte à valider
+let ring = null;
 const tiles = new Map();
+
+const isTeam = () => !guestCode || guestRole === 'equipe';
+const me = () => room?.localParticipant.identity;
+const agent = () => room ? [...room.remoteParticipants.values()].find((p) => p.isAgent) : null;
+const etat = () => {
+  const a = agent()?.attributes || {};
+  return { pret: !!a.pret, aifred: a.aifred || '', aifredNom: a.aifred_nom || '', dernier: a.dernier || '', dernierNom: a.dernier_nom || '',
+           state: a['lk.agent.state'] || '' };
+};
+
+async function rpc(method, body = {}) {
+  const a = agent();
+  if (!a) return { ok: false, raison: "AIfred n'est pas encore là." };
+  try {
+    return JSON.parse(await room.localParticipant.performRpc({
+      destinationIdentity: a.identity, method, payload: JSON.stringify(body), responseTimeout: 15000,
+    }));
+  } catch (e) {
+    console.warn('rpc', method, e);
+    return { ok: false, raison: 'Pas de réponse. Réessaie.' };
+  }
+}
+
+// ---------- Le bip quand AIfred s'active ----------
+
+let audioContext = null;
+function bip(up) {
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.frequency.value = up ? 880 : 620;
+    gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
+    osc.connect(gain).connect(audioContext.destination);
+    osc.start();
+    osc.stop(audioContext.currentTime + 0.12);
+  } catch {}
+}
 
 // ---------- Accueil ----------
 
@@ -194,46 +417,69 @@ if (guestCode) {
   fetch('/api/guest/' + encodeURIComponent(guestCode)).then(async (r) => {
     const data = await r.json();
     if (!r.ok) throw new Error(data.detail);
+    guestRole = data.role;
     // Un employé invité montre la panne ; un artisan ou un propriétaire se montre
     if (data.role === 'equipe') facing = 'environment';
-    $('#guest-text').textContent = `Bonjour ${data.name}. ${data.invited_by} vous invite à une visio pour : ${data.reason}.`;
-  }).catch((e) => { $('#guest-error').textContent = e.message; $('#guest-join').disabled = true; });
-  $('#guest-join').onclick = () => join('/api/guest/join', { code: guestCode }, '#guest-error', '#guest-join');
+    sujet = data.reason;
+    $('#guest-title').textContent = `Visio · ${data.reason}`;
+    $('#guest-text').textContent = `Bonjour ${data.name}. ${data.invited_by} vous invite dans cette visio. Dans la visio : ${data.invited_by} et AIfred, l'assistant IA de l'équipe.`;
+    if (data.photo) { $('#guest-photo').src = data.photo; $('#guest-photo').hidden = false; }
+  }).catch((e) => { $('#guest-error').textContent = e.message; $('#guest-join').disabled = $('#guest-audio').disabled = true; });
+  const guestEnter = (noCamera) => async () => {
+    audioOnly = noCamera;
+    $('#guest-join').disabled = $('#guest-audio').disabled = true;
+    try {
+      await joinRoom('/api/guest/join', { code: guestCode }, 'visio');
+    } catch (e) {
+      $('#guest-error').textContent = e.message;
+      $('#guest-join').disabled = $('#guest-audio').disabled = false;
+    }
+  };
+  $('#guest-join').onclick = guestEnter(false);
+  $('#guest-audio').onclick = guestEnter(true);
 } else {
   $('#team-home').hidden = false;
   $('#name').value = store.get('aifred-name');
   $('#code-row').hidden = !!store.get('aifred-code');
-  if (params.get('salle')) $('#start').textContent = 'Rejoindre la visio';
-  $('#start').onclick = () => {
+  $('#start').onclick = async () => {
     const name = $('#name').value.trim();
     if (!name) { $('#team-error').textContent = 'Ton prénom, pour que les autres sachent qui parle.'; return; }
     if ($('#code').value.trim()) store.set('aifred-code', $('#code').value.trim());
     store.set('aifred-name', name);
-    join('/api/team/join', { name, code: store.get('aifred-code'), room: params.get('salle') || null },
-         '#team-error', '#start');
+    $('#start').disabled = true;
+    $('#team-error').textContent = '';
+    try {
+      await enterTeamRoom(params.get('salle'));
+    } catch (e) {
+      $('#team-error').textContent = e.message;
+      $('#start').disabled = false;
+    }
   };
 }
 
-async function join(endpoint, body, errorSel, buttonSel) {
-  $(errorSel).textContent = '';
-  $(buttonSel).disabled = true;
-  try {
-    const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await r.json();
-    if (!r.ok) {
-      if (r.status === 403) { store.set('aifred-code', ''); $('#code-row').hidden = false; }
-      throw new Error(data.detail || 'Erreur ' + r.status);
-    }
-    await connect(data);
-  } catch (e) {
-    $(errorSel).textContent = e.message;
-    $(buttonSel).disabled = false;
-  }
+function enterTeamRoom(roomName) {
+  const body = { name: store.get('aifred-name'), code: store.get('aifred-code'), room: roomName || null, sujet };
+  return joinRoom('/api/team/join', body, roomName ? 'visio' : 'canal');
 }
 
-// ---------- Visio ----------
+async function joinRoom(endpoint, body, newMode) {
+  const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json();
+  if (!r.ok) {
+    if (r.status === 403) { store.set('aifred-code', ''); $('#code-row').hidden = false; }
+    throw new Error(data.detail || 'Erreur ' + r.status);
+  }
+  await connect(data, newMode);
+}
 
-async function connect({ token, url, room: roomName }) {
+// ---------- La salle ----------
+
+async function connect({ token, url }, newMode) {
+  mode = newMode;
+  heard = reply = '';
+  hideConfirm();
+  document.querySelectorAll('.feed .card, .vcards .card').forEach((card) => card.remove());
+  $('#visio-feed').hidden = true;
   room = new LK.Room({
     // Comme LearnFloo : chacun reçoit les caméras à la taille affichée, personne n'envoie une couche inutile
     adaptiveStream: true,
@@ -241,118 +487,404 @@ async function connect({ token, url, room: roomName }) {
     videoCaptureDefaults: { facingMode: facing, resolution: LK.VideoPresets.h720.resolution },
     audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
   });
+  const current = room;
   room
-    .on(LK.RoomEvent.ParticipantConnected, refresh)
-    .on(LK.RoomEvent.ParticipantDisconnected, refresh)
+    .on(LK.RoomEvent.ParticipantConnected, render)
+    .on(LK.RoomEvent.ParticipantDisconnected, (p) => { if (p.isAgent) callAgentIfGone(); render(); })
+    .on(LK.RoomEvent.ParticipantAttributesChanged, onAttributes)
     .on(LK.RoomEvent.TrackSubscribed, (track) => {
       if (track.kind === 'audio') document.body.append(track.attach());
-      refresh();
+      render();
     })
     .on(LK.RoomEvent.TrackUnsubscribed, (track) => {
       if (track.kind === 'audio') track.detach().forEach((el) => el.remove());
-      refresh();
+      render();
     })
-    .on(LK.RoomEvent.TrackMuted, refresh)
-    .on(LK.RoomEvent.TrackUnmuted, refresh)
-    .on(LK.RoomEvent.LocalTrackPublished, refresh)
-    .on(LK.RoomEvent.LocalTrackUnpublished, refresh)
-    .on(LK.RoomEvent.ActiveSpeakersChanged, (speakers) => {
-      const ids = new Set(speakers.map((p) => p.identity));
+    .on(LK.RoomEvent.TrackMuted, render)
+    .on(LK.RoomEvent.TrackUnmuted, render)
+    .on(LK.RoomEvent.LocalTrackPublished, render)
+    .on(LK.RoomEvent.LocalTrackUnpublished, render)
+    .on(LK.RoomEvent.ActiveSpeakersChanged, (list) => {
+      const ids = new Set(list.map((p) => p.identity));
       for (const [id, el] of tiles) el.classList.toggle('speaking', ids.has(id));
+      speakers = list.filter((p) => !p.isAgent);
+      renderLive();
     })
     .on(LK.RoomEvent.DataReceived, (payload, _participant, _kind, topic) => {
-      if (topic === 'aifred') addCard(JSON.parse(new TextDecoder().decode(payload)));
+      if (topic === 'aifred') onMessage(JSON.parse(new TextDecoder().decode(payload)));
     })
     .on(LK.RoomEvent.AudioPlaybackStatusChanged, () => { $('#unmute').hidden = room.canPlaybackAudio; })
     .on(LK.RoomEvent.Reconnecting, () => toast('Connexion perdue, je reconnecte…'))
     .on(LK.RoomEvent.Reconnected, () => toast('Reconnecté'))
-    .on(LK.RoomEvent.Disconnected, () => location.reload());
+    .on(LK.RoomEvent.Disconnected, () => { if (!leaving && room === current) location.reload(); });
 
-  // Sous-titres de ce que dit AIfred (transcription publiée par l'agent)
+  // Ce qu'AIfred dit, et ce qu'il entend en direct (transcriptions publiées par l'agent)
   room.registerTextStreamHandler('lk.transcription', async (reader, info) => {
-    const speaker = room.remoteParticipants.get(info.identity);
-    if (!speaker?.isAgent) return;
-    let text = '';
-    for await (const chunk of reader) { text += chunk; showSubtitle(text); }
-    setTimeout(() => { if ($('#subtitle span').textContent === text) $('#subtitle').hidden = true; }, 4000);
+    const isAgent = room.remoteParticipants.get(info.identity)?.isAgent;
+    if (isAgent) {
+      let text = '';
+      for await (const chunk of reader) { text += chunk; reply = text; heard = ''; renderLive(); }
+    } else {
+      const text = await reader.readAll();
+      if (text.trim()) { heard = text; renderLive(); }
+    }
+  });
+
+  // AIfred ne reçoit pas de vidéo : il demande une image, une seule, quand il regarde
+  room.registerRpcMethod('photo', async (data) => {
+    const blob = await grabPhoto();
+    if (!blob) throw new LK.RpcError(1, 'Pas de caméra');
+    await room.localParticipant.sendFile(new File([blob], 'photo.jpg', { type: 'image/jpeg' }),
+      { topic: 'aifred-photo', destinationIdentities: [data.callerIdentity] });
+    return 'ok';
   });
 
   await room.connect(url, token);
   await room.startAudio();
-  $('#team-home').hidden = $('#guest-home').hidden = true;
-  $('#call').hidden = false;
-  $('#share').hidden = !!guestCode;
-  try { await room.localParticipant.setMicrophoneEnabled(true); } catch { toast('Micro refusé : autorise-le dans le navigateur.'); }
-  try { await room.localParticipant.setCameraEnabled(true); } catch { toast('Caméra refusée : autorise-la dans le navigateur.'); }
-  if (!guestCode) history.replaceState(null, '', '/?salle=' + roomName);
-  refresh();
+  for (const id of ['#team-home', '#guest-home']) $(id).hidden = true;
+  $('#app').hidden = false;
+  const name = room.localParticipant.name || store.get('aifred-name');
+  $('#who-name').textContent = name;
+  $('#who-av').textContent = name.slice(0, 1).toUpperCase();
+  render();   // l'écran s'affiche pendant que le navigateur demande l'accès au micro
+  try {
+    await room.localParticipant.setMicrophoneEnabled(micWanted);
+  } catch { toast('Micro refusé : autorise-le dans le navigateur.'); }
+  if (mode === 'visio' && !audioOnly) {
+    try { await room.localParticipant.setCameraEnabled(true); } catch { toast('Caméra refusée : autorise-la dans le navigateur.'); }
+  }
+  render();
+  callAgentIfGone();
 }
 
-function tileFor(p) {
-  let el = tiles.get(p.identity);
+// LiveKit n'envoie l'agent qu'à la création de la salle : s'il a redémarré, on le rappelle
+let agentTimer = null;
+function callAgentIfGone() {
+  clearTimeout(agentTimer);
+  if (guestCode) return;
+  agentTimer = setTimeout(async () => {
+    if (!room || agent()) return;
+    fetch('/api/team/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: store.get('aifred-code'), room: room.name }) }).catch(() => {});
+    callAgentIfGone();
+  }, 6000);
+}
+
+async function switchTo(roomName) {
+  leaving = true;
+  const old = room;
+  room = null;
+  tiles.forEach((el) => el.remove());
+  tiles.clear();
+  await old?.disconnect();
+  leaving = false;
+  await enterTeamRoom(roomName);
+}
+
+function onAttributes() {
+  syncMic();
+  render();
+}
+
+function syncMic() {
+  if (!room) return;
+  // AIfred activé a besoin du micro, même si on l'avait coupé pour les autres
+  const on = micWanted || etat().aifred === me();
+  if (room.localParticipant.isMicrophoneEnabled !== on) {
+    room.localParticipant.setMicrophoneEnabled(on).catch(() => toast('Micro refusé : autorise-le dans le navigateur.'));
+  }
+}
+
+// ---------- Les deux boutons : un toucher suffit ----------
+
+function toggleMic() {
+  micWanted = !micWanted;
+  syncMic();
+  render();
+}
+$('#pad-team').onclick = toggleMic;
+
+document.querySelectorAll('[data-ai]').forEach((pad) => {
+  pad.onclick = async () => {
+    const e = etat();
+    if (e.aifred === me()) {
+      await rpc('activer', { on: false });
+      return;
+    }
+    reply = heard = '';
+    const r = await rpc('activer', { on: true });
+    if (!r.ok) { toast(r.nom ? `${r.nom} parle` : r.raison); return; }
+    bip(true);
+    // Le micro s'ouvre tout de suite : l'état partagé arrive un peu après
+    if (room && !room.localParticipant.isMicrophoneEnabled) room.localParticipant.setMicrophoneEnabled(true);
+    render();
+  };
+});
+
+// ---------- L'affichage ----------
+
+function setMode() {
+  const visio = mode === 'visio';
+  $('#app').dataset.mode = mode;
+  $('#seg-t').classList.toggle('sel', !visio);
+  $('#seg-v').classList.toggle('sel', visio);
+  for (const id of ['#canal-feed', '#status', '#pads']) $(id).hidden = visio;
+  for (const id of ['#stage', '#vbar']) $(id).hidden = !visio;
+  $('#seg').hidden = !isTeam();
+  $('#head-kicker').firstChild.textContent = visio ? 'Visio · ' : 'Canal · Équipe';
+  $('#head-title').textContent = visio ? (sujet || 'Intervention') : 'La conciergerie';
+  $('#rec').hidden = !visio;
+}
+
+function render() {
+  if (!room) return;
+  setMode();
+  const e = etat();
+  const mine = e.aifred === me();
+  const answering = e.state === 'speaking' || e.state === 'thinking';
+
+  // Bouton AIfred
+  let cls = '', sub = 'Toucher pour parler';
+  if (!e.pret) { cls = 'lock'; sub = 'Il arrive…'; }
+  else if (mine) { cls = 'listen'; sub = "Je t'écoute · retouche quand tu as fini"; }
+  else if (e.aifred) { cls = 'busy'; sub = `${e.aifredNom} lui parle`; }
+  else if (answering && e.dernier === me()) { cls = 'speak'; sub = 'Toucher pour le couper'; }
+  else if (answering) { cls = 'busy'; sub = `Il répond à ${e.dernierNom}`; }
+  document.querySelectorAll('[data-ai]').forEach((pad) => {
+    pad.className = `pad ai ${pad.id === 'vpad' ? 'vpad ' : ''}${cls}`;
+    pad.querySelector('[data-ai-sub]').textContent = sub;
+  });
+
+  // Bouton Équipe : le micro de la personne
+  $('#pad-team').className = `pad team ${micWanted ? '' : 'lock'}`;
+  $('#team-sub').textContent = micWanted ? 'Micro ouvert · toucher pour couper' : 'Micro coupé · toucher pour parler';
+
+  renderLive();
+  if (mode === 'visio') renderTiles();
+  // L'aide disparaît dès qu'AIfred a servi une fois
+  if (e.aifred || !$('#board-toggle').hidden || $('#canal-feed').children.length > 1) $('#feed-empty').hidden = true;
+}
+
+const WAVE = `<div class="wave">${'<i></i>'.repeat(14)}</div>`;
+
+function renderLive() {
+  if (!room) return;
+  const e = etat();
+  const mine = e.aifred === me();
+  const humans = [...room.remoteParticipants.values()].filter((p) => !p.isAgent).length;
+  const st = $('#status');
+  let cls = '', html = '';
+  if (e.aifred) {
+    cls = 's';
+    const who = mine ? "AIfred t'écoute" : `${esc(e.aifredNom)} parle à AIfred`;
+    const line = e.state === 'speaking' ? `<p class="q">${esc(reply)}</p>`
+      : e.state === 'thinking' ? `<p class="q">${esc(heard)}</p><p>AIfred réfléchit…</p>`
+      : (heard ? `<p class="q">« ${esc(heard)} »</p>` : `${WAVE}<p>${mine ? "Parle, puis retouche AIfred quand tu as fini : il répondra à ce moment-là." : "Toute l'équipe entend."}</p>`);
+    html = `<p class="h"><span><span class="dot s"></span>${who}</span><small>${mine ? 'toi' : esc(e.aifredNom)}</small></p>${line}`;
+  } else if (e.state === 'speaking' && reply) {
+    cls = 's';
+    html = `<p class="h"><span><span class="dot s"></span>AIfred répond</span></p><p class="q">${esc(reply)}</p>`;
+  } else if (e.state === 'thinking') {
+    cls = 's';
+    html = `<p class="h"><span><span class="dot s"></span>AIfred réfléchit…</span></p>${heard ? `<p class="q">« ${esc(heard)} »</p>` : ''}`;
+  } else if (speakers.length) {
+    const names = speakers.map((p) => (p === room.localParticipant ? 'Tu parles' : `${esc(p.name || 'Quelqu\'un')} parle`)).join(', ');
+    cls = 'o';
+    html = `<p class="h"><span><span class="dot"></span>${names}</span><small>${humans + 1} en ligne</small></p>${WAVE}`;
+  } else {
+    html = `<p class="h"><span>Canal ouvert</span><small>${humans + 1} en ligne</small></p>`
+      + `<p>Tout le monde peut parler.<br>AIfred : touche pour lui parler, retouche quand tu as fini.</p>`;
+  }
+  st.className = `st ${cls}`;
+  st.innerHTML = html;
+
+  if (mode === 'visio') {
+    const rec = $('#rec');
+    rec.textContent = e.aifred ? `● AIfred écoute ${mine ? 'toi' : e.aifredNom}` : 'AIfred en veille';
+    rec.classList.toggle('on', !!e.aifred);
+    const cap = $('#caption');
+    const line = e.state === 'speaking' && reply ? `<b>AIFRED ·</b> ${esc(reply)}` : (e.aifred && heard ? `<b>${esc((e.aifredNom || '').toUpperCase())} ·</b> ${esc(heard)}` : '');
+    if (line) cap.innerHTML = line;
+    cap.hidden = !line;
+  } else {
+    $('#caption').hidden = true;
+  }
+}
+
+// ---------- Les tuiles de la visio ----------
+
+function tileFor(id) {
+  let el = tiles.get(id);
   if (!el) {
-    el = document.createElement('div');
+    el = document.createElement('button');
     el.className = 'tile';
-    el.innerHTML = '<video autoplay playsinline muted></video><div class="avatar"></div><span class="name"></span>';
-    $('#stage').append(el);
-    tiles.set(p.identity, el);
+    el.innerHTML = '<video autoplay playsinline muted></video><div class="big-av"></div>'
+      + '<div class="frame"></div><span class="eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>AIfred regarde</span>'
+      + '<span class="tile-name"></span>';
+    el.onclick = () => { pinned = pinned === id ? null : id; renderTiles(); };
+    tiles.set(id, el);
   }
   return el;
 }
 
-function refresh() {
+function renderTiles() {
   if (!room) return;
-  for (const [id, el] of tiles) {
-    if (!room.remoteParticipants.has(id)) { el.remove(); tiles.delete(id); }
-  }
-  for (const p of room.remoteParticipants.values()) {
-    const el = tileFor(p);
-    const name = p.isAgent ? 'AIfred · IA' : (p.name || 'Invité');
-    el.classList.toggle('agent', p.isAgent);
-    el.querySelector('.name').textContent = name;
-    el.querySelector('.avatar').textContent = p.isAgent ? 'AI' : name.slice(0, 1).toUpperCase();
+  const lp = room.localParticipant;
+  const people = [lp, ...room.remoteParticipants.values()];
+  const ids = new Set(people.map((p) => p.identity));
+  for (const [id, el] of tiles) if (!ids.has(id)) { el.remove(); tiles.delete(id); }
+
+  const cameraOf = (p) => {
     const pub = p.getTrackPublication(LK.Track.Source.Camera);
-    const track = pub && pub.isSubscribed && !pub.isMuted ? pub.videoTrack : null;
+    if (!pub || pub.isMuted) return null;
+    return p === lp ? pub.videoTrack : (pub.isSubscribed ? pub.videoTrack : null);
+  };
+  // À l'écran : celui qu'on a touché, sinon le dernier de l'équipe qui filme, sinon soi-même
+  const remotes = [...room.remoteParticipants.values()].filter((p) => !p.isAgent && cameraOf(p));
+  const filming = remotes.filter((p) => p.attributes?.role === 'equipe').pop() || remotes.pop();
+  const mainId = pinned && ids.has(pinned) ? pinned : (filming ? filming.identity : lp.identity);
+
+  for (const p of people) {
+    const el = tileFor(p.identity);
+    const isMe = p === lp;
+    const label = p.isAgent ? 'AIfred · IA' : (isMe ? `${p.name || 'Moi'} · toi` : (p.name || 'Invité'));
+    el.classList.toggle('agent', !!p.isAgent);
+    el.querySelector('.tile-name').textContent = label;
+    el.querySelector('.big-av').textContent = (p.name || '?').slice(0, 1).toUpperCase();
+    const track = cameraOf(p);
     const video = el.querySelector('video');
-    if (track && video.dataset.sid !== track.sid) { track.attach(video); video.dataset.sid = track.sid; }
+    if (track && video.dataset.sid !== track.sid + track.mediaStreamTrack?.id) {
+      track.attach(video);
+      video.dataset.sid = track.sid + track.mediaStreamTrack?.id;
+    }
     if (!track && video.dataset.sid) { video.srcObject = null; delete video.dataset.sid; }
     el.classList.toggle('has-video', !!track);
+    el.classList.toggle('mirror', isMe && facing === 'user');
+    const home = p.identity === mainId ? $('#mains') : $('#minis');
+    if (el.parentElement !== home) home.append(el);
   }
-  $('#stage').dataset.count = tiles.size;
-
-  const lp = room.localParticipant;
-  const own = lp.getTrackPublication(LK.Track.Source.Camera);
-  const selfVideo = $('#self video');
-  if (own?.videoTrack && !own.isMuted) own.videoTrack.attach(selfVideo);
-  $('#self').hidden = !(own?.videoTrack && !own.isMuted);
-  $('#self').classList.toggle('front', facing === 'user');
   $('#mic').classList.toggle('off', !lp.isMicrophoneEnabled);
   $('#cam').classList.toggle('off', !lp.isCameraEnabled);
 }
 
-$('#mic').onclick = async () => { await room.localParticipant.setMicrophoneEnabled(!room.localParticipant.isMicrophoneEnabled); refresh(); };
-$('#cam').onclick = async () => { await room.localParticipant.setCameraEnabled(!room.localParticipant.isCameraEnabled); refresh(); };
+async function grabPhoto() {
+  const pub = room.localParticipant.getTrackPublication(LK.Track.Source.Camera);
+  if (!pub?.videoTrack || pub.isMuted) return null;
+  const video = tileFor(me()).querySelector('video');
+  if (!video.videoWidth) return null;
+  const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+}
+
+$('#mic').onclick = toggleMic;
+$('#cam').onclick = async () => { await room.localParticipant.setCameraEnabled(!room.localParticipant.isCameraEnabled); render(); };
 $('#flip').onclick = async () => {
   facing = facing === 'user' ? 'environment' : 'user';
   const pub = room.localParticipant.getTrackPublication(LK.Track.Source.Camera);
   if (pub?.videoTrack) await pub.videoTrack.restartTrack({ facingMode: facing });
-  refresh();
+  render();
 };
-$('#share').onclick = async () => {
-  const link = location.origin + '/?salle=' + room.name;
-  try {
-    if (navigator.share) await navigator.share({ title: 'Visio AIfred', url: link });
-    else { await navigator.clipboard.writeText(link); toast('Lien copié (pour l\'équipe seulement)'); }
-  } catch {}
-};
-$('#leave').onclick = () => room.disconnect();
 $('#unmute').onclick = () => room.startAudio();
 
-// ---------- Cartes envoyées par AIfred ----------
+// ---------- Passer du talkie à la visio, et revenir ----------
 
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+$('#seg-v').onclick = () => { if (mode === 'canal') openSheet(); };
+$('#seg-t').onclick = () => { if (mode === 'visio') hangUp(); };
+$('#leave').onclick = hangUp;
 
-// ---------- Le tableau de la journée ----------
+async function openSheet() {
+  $('#dim').hidden = $('#sheet').hidden = false;
+  const r = await fetch('/api/team/contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: store.get('aifred-code') }) });
+  const data = r.ok ? await r.json() : { contacts: [] };
+  $('#invites').innerHTML = data.contacts.map((c) =>
+    `<label class="row"><input type="checkbox" value="${esc(c.id)}"><span class="grow">${esc(c.name)}<small>${esc(c.trade)}</small></span></label>`).join('');
+}
+function closeSheet() { $('#dim').hidden = $('#sheet').hidden = true; }
+$('#sheet-close').onclick = closeSheet;
+$('#dim').onclick = closeSheet;
+$('#launch').onclick = async () => {
+  const invites = [...document.querySelectorAll('#invites input:checked')].map((i) => i.value);
+  const subject = $('#sujet').value.trim();
+  facing = $('#rear').checked ? 'environment' : 'user';
+  $('#launch').disabled = true;
+  const r = await rpc('lancer_visio', { sujet: subject, invites });
+  $('#launch').disabled = false;
+  if (!r.ok) { toast(r.raison || 'La visio ne démarre pas. Réessaie.'); return; }
+  closeSheet();
+  sujet = subject;
+  await switchTo(r.room);
+};
+
+async function hangUp() {
+  if (!isTeam() || !agent()) {
+    leaving = true;
+    await room?.disconnect();
+    if (guestCode) {
+      $('#app').hidden = true;
+      $('#guest-end').hidden = false;
+      return;
+    }
+    leaving = false;
+    return backToCanal();
+  }
+  toast('AIfred écrit la fiche…');
+  room.localParticipant.setCameraEnabled(false).catch(() => {});
+  room.localParticipant.setMicrophoneEnabled(false).catch(() => {});
+  const fiche = await rpc('terminer');
+  leaving = true;
+  await room.disconnect();
+  leaving = false;
+  room = null;
+  tiles.forEach((el) => el.remove());
+  tiles.clear();
+  if (fiche.vide || fiche.deja_notee || fiche.ok === false) {
+    if (fiche.deja_notee) toast("L'intervention est déjà dans l'historique");
+    return backToCanal();
+  }
+  showFiche(fiche);
+}
+
+async function backToCanal() {
+  $('#fiche-screen').hidden = true;
+  $('#seg').hidden = false;
+  sujet = '';
+  if (guestCode) { $('#app').hidden = true; $('#guest-end').hidden = false; return; }
+  leaving = false;
+  await enterTeamRoom(null);
+}
+
+// ---------- La fiche d'intervention ----------
+
+let ficheData = null;
+function showFiche(fiche) {
+  ficheData = fiche;
+  for (const id of ['#canal-feed', '#status', '#pads', '#stage', '#vbar', '#seg', '#rec', '#caption', '#confirm', '#visio-feed']) $(id).hidden = true;
+  $('#head-kicker').firstChild.textContent = 'Visio terminée';
+  $('#head-title').textContent = fiche.maison || '';
+  $('#fiche-screen').hidden = false;
+  $('#fiche-title').textContent = `Fiche d'intervention${fiche.maison ? ' · ' + fiche.maison : ''}`;
+  document.querySelectorAll('[data-fiche]').forEach((input) => { input.value = fiche[input.dataset.fiche] || ''; input.readOnly = true; });
+  $('#fiche-photo-row').hidden = !fiche.photo;
+  if (fiche.photo) $('#fiche-photo').src = fiche.photo;
+  $('#fiche-error').textContent = '';
+}
+$('#fiche-edit').onclick = () => { document.querySelectorAll('[data-fiche]').forEach((input) => { input.readOnly = false; }); document.querySelector('[data-fiche]').focus(); };
+$('#fiche-skip').onclick = backToCanal;
+$('#fiche-ok').onclick = async () => {
+  const body = { code: store.get('aifred-code'), code_erreur: ficheData?.code || '' };
+  document.querySelectorAll('[data-fiche]').forEach((input) => { body[input.dataset.fiche] = input.value; });
+  const r = await fetch('/api/fiche', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json();
+  if (!r.ok) { $('#fiche-error').textContent = data.detail || 'La fiche ne part pas. Réessaie.'; return; }
+  toast(`Fiche ajoutée à l'historique de ${data.maison}`);
+  await backToCanal();
+};
+
+// ---------- Ce qu'envoie AIfred ----------
 
 const boardStatus = new Map();
 
@@ -386,40 +918,74 @@ function showBoard(rows) {
   // La première fois il s'ouvre ; ensuite il change sans se rouvrir si on l'a fermé
   if ($('#board-toggle').hidden) {
     $('#board-toggle').hidden = false;
-    toggleBoard(true);
+    $('#board').hidden = false;
   }
 }
-
-function toggleBoard(open) {
-  $('#board').hidden = !open;
-  $('#call').classList.toggle('with-board', open);
-}
-$('#board-close').onclick = () => toggleBoard(false);
-$('#board-toggle').onclick = () => toggleBoard($('#board').hidden);
+$('#board-close').onclick = () => { $('#board').hidden = true; };
+$('#board-toggle').onclick = () => { $('#board').hidden = !$('#board').hidden; };
 
 function intervention(r) {
   return `<li>${esc(r.house)}, ${esc(r.at)}${r.code ? ', code ' + esc(r.code) : ''} : ${esc(r.problem)}. ${esc(r.fix)} <small>par ${esc(r.by_name)}</small></li>`;
 }
 
-function addCard(c) {
+function showConfirm(c) {
+  pending = c;
+  const asker = c.by === me() || !c.by;
+  $('#confirm-title').textContent = asker ? 'À valider par toi' : `En attente du oui de ${c.by_name}`;
+  $('#confirm-tag').textContent = c.type === 'pending' ? 'WhatsApp' : 'Email';
+  $('#confirm-what').textContent = c.type === 'pending' ? `À ${c.name}, ${c.trade}` : 'Le rapport de la journée';
+  $('#confirm-text').textContent = c.type === 'pending'
+    ? `« Bonjour, ${c.by_name || "l'équipe"} vous demande de rejoindre une visio pour : ${c.reason}. » Le message dit qu'il vient d'un assistant IA.`
+    : 'Les arrivées et les départs du jour, par email.';
+  $('#confirm-photo').hidden = !c.photo;
+  if (c.photo) $('#confirm-photo').src = c.photo;
+  $('#confirm-btns').hidden = !asker;
+  $('#confirm-say').hidden = !asker;
+  $('#confirm').hidden = false;
+}
+function hideConfirm() { pending = null; $('#confirm').hidden = true; }
+$('#confirm-yes').onclick = async () => { hideConfirm(); await rpc('valider', { choix: 'envoyer' }); };
+$('#confirm-no').onclick = async () => { hideConfirm(); await rpc('valider', { choix: 'annuler' }); };
+
+function onMessage(c) {
   if (c.type === 'journee') return showBoard(c.rows);
+  if (c.type === 'regarde') {
+    const el = tiles.get(c.who);
+    if (el) { el.classList.add('looking'); setTimeout(() => el.classList.remove('looking'), 2000); }
+    return;
+  }
+  if (c.type === 'pending' || c.type === 'mail_pending') return showConfirm(c);
+  if (c.type === 'cancelled') { hideConfirm(); return toast('Annulé, rien n\'est parti'); }
+  if (c.type === 'sent' || c.type === 'mail_sent') hideConfirm();
+  if (c.type === 'sonnerie') return showRing(c);
+  addCard(c);
+}
+
+function showRing(c) {
+  ring = c;
+  bip(true);
+  setTimeout(() => bip(true), 300);
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.innerHTML = `<strong>${esc(c.by_name)} t'invite en visio</strong>${esc(c.reason)}<button class="btn pri">Rejoindre la visio</button>`;
+  el.querySelector('.btn').onclick = () => { sujet = c.reason; switchTo(c.room); };
+  placeCard(el);
+}
+
+function addCard(c) {
   const el = document.createElement('div');
   const img = (src) => src ? `<img src="${esc(src)}" alt="">` : '';
   const close = '<button class="close" aria-label="Fermer">✕</button>';
   if (c.type === 'photo') { el.className = 'card'; el.innerHTML = `${close}<strong>Photo prise</strong>${img(c.url)}`; }
   else if (c.type === 'fiche') { el.className = 'card'; el.innerHTML = `${close}<strong>${esc(c.title)}</strong>${esc(c.text)}`; }
-  else if (c.type === 'pending') {
-    el.className = 'card pending';
-    el.innerHTML = `${close}<strong>En attente de ton « oui »</strong>WhatsApp à ${esc(c.name)} (${esc(c.trade)}) : ${esc(c.reason)}${img(c.photo)}`;
-  } else if (c.type === 'sent') {
+  else if (c.type === 'sent') {
     el.className = 'card sent';
     el.innerHTML = `${close}<strong>${c.dry_run ? 'Mode essai : rien n\'est parti' : 'Invitation envoyée'}</strong>`
       + `${esc(c.name)} (${esc(c.trade)})${c.dry_run ? ', ouvre ce lien sur un autre téléphone :' : ''}`
-      + `<br><a class="link" href="${esc(c.link)}" target="_blank" rel="noopener">${esc(c.link)}</a>`;
-    document.querySelectorAll('.card.pending').forEach((p) => p.remove());
-  } else if (c.type === 'cancelled') {
-    document.querySelectorAll('.card.pending').forEach((p) => p.remove());
-    return toast('Invitation annulée');
+      + (c.dry_run ? `<br><a class="link" href="${esc(c.link)}" target="_blank" rel="noopener">${esc(c.link)}</a>` : '')
+      + (c.room ? '<button class="btn pri" data-go>Passer en visio</button>' : '');
+    const go = () => { sujet = c.reason || ''; switchTo(c.room); };
+    setTimeout(() => el.querySelector('[data-go]')?.addEventListener('click', go));
   } else if (c.type === 'historique') {
     el.className = 'card';
     el.innerHTML = `${close}<strong>Historique de ${esc(c.title)}</strong>`
@@ -431,26 +997,30 @@ function addCard(c) {
   } else if (c.type === 'vol') {
     el.className = 'card';
     el.innerHTML = `${close}<strong>Vol ${esc(c.flight)} · ${esc(c.guest)}</strong>${esc(c.status)}`;
-  } else if (c.type === 'mail_pending') {
-    el.className = 'card pending';
-    el.innerHTML = `${close}<strong>En attente de ton « oui »</strong>Rapport de la journée par email`;
   } else if (c.type === 'mail_sent') {
     el.className = 'card sent';
     el.innerHTML = `${close}<strong>${c.dry_run ? 'Mode essai : rien n\'est parti' : 'Email envoyé'}</strong>Rapport de la journée`;
-    document.querySelectorAll('.card.pending').forEach((p) => p.remove());
   } else if (c.type === 'error') { el.className = 'card error'; el.innerHTML = `${close}${esc(c.text)}`; }
   else return;
-  el.querySelector('.close').onclick = () => el.remove();
-  $('#cards').prepend(el);
-  while ($('#cards').children.length > 4) $('#cards').lastChild.remove();
+  el.querySelector('.close').onclick = () => { el.remove(); render(); };
+  placeCard(el);
 }
 
-function showSubtitle(text) {
-  $('#subtitle span').textContent = text;
-  $('#subtitle').hidden = false;
+function placeCard(el) {
+  const list = mode === 'visio' ? $('#visio-feed') : $('#canal-feed');
+  if (mode === 'visio') {
+    list.hidden = false;
+    // Elles s'effacent seules pour ne pas cacher la caméra
+    setTimeout(() => { el.remove(); render(); }, 12000);
+  }
+  list.append(el);
+  while (list.querySelectorAll('.card').length > 4) list.querySelector('.card').remove();
+  list.scrollTop = list.scrollHeight;
+  render();
 }
 
 function toast(text) {
+  document.querySelectorAll('.toast').forEach((old) => old.remove());
   const el = document.createElement('div');
   el.className = 'toast';
   el.textContent = text;

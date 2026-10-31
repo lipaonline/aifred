@@ -11,8 +11,8 @@ regarder est un sens, comme la voix. confirmer_envoi et annuler_envoi servent au
 fonctionnalités 1 et 3.
 
 Règle du hackathon : toute action qu'on ne peut pas annuler passe par une confirmation humaine.
-Ici, preparer_rapport et preparer_invitation n'envoient rien ; confirmer_envoi vérifie dans le code
-que la dernière phrase entendue est un « oui » et qu'elle vient d'un membre de l'équipe.
+Ici, preparer_rapport et preparer_invitation n'envoient rien. L'envoi part sur un « oui » de la personne
+qui a activé AIfred, vérifié dans le code, ou quand cette personne touche Envoyer sur la carte.
 """
 
 import base64
@@ -36,6 +36,11 @@ PHOTOS = config.DATA_DIR / "photos"
 YES_RE = re.compile(r"\b(oui|ouais|vas-y|vas y|ok|okay|d'accord|daccord|envoie|envoie-le|confirme|go)\b")
 NO_RE = re.compile(r"\b(non|attends|attend|annule|stop)\b")
 PENDING_SECONDS = 120
+PHOTO_TOPIC = "aifred-photo"
+
+
+def new_visio_name() -> str:
+    return f"{config.VISIO_PREFIX}{secrets.token_hex(3)}"
 
 
 @dataclass
@@ -46,7 +51,21 @@ class Visio:
     pending: dict | None = None             # invitation qui attend le « oui »
     last_photo: str | None = None           # fichier dans data/photos
     board_shown: bool = False               # le tableau de la journée est affiché
+    noted: bool = False                     # l'intervention est déjà dans l'historique
+    sujet: str = ""                         # le sujet de la visio, donné au lancement
+    guest_room: str | None = None           # sur le canal : la visio préparée pour les invités
     anthropic_client: anthropic.AsyncAnthropic = field(default_factory=anthropic.AsyncAnthropic)
+
+    @property
+    def is_canal(self) -> bool:
+        return self.room.name.startswith(config.CANAL_PREFIX)
+
+    def visio_room(self) -> str:
+        """La salle où inviter : celle-ci en visio. Sur le canal, une visio qu'on ouvrira ensuite."""
+        if not self.is_canal:
+            return self.room.name
+        self.guest_room = self.guest_room or new_visio_name()
+        return self.guest_room
 
     def team(self) -> list[rtc.RemoteParticipant]:
         return [p for p in self.room.remote_participants.values() if p.attributes.get("role") == "equipe"]
@@ -57,6 +76,11 @@ class Visio:
         if team:
             payload = json.dumps({"type": kind, **data}, ensure_ascii=False)
             await self.room.local_participant.publish_data(payload, topic="aifred", destination_identities=team)
+
+    async def signal(self, kind: str, **data):
+        """Un signal pour tout le monde dans la salle, invités compris : « AIfred regarde »."""
+        payload = json.dumps({"type": kind, **data}, ensure_ascii=False)
+        await self.room.local_participant.publish_data(payload, topic="aifred")
 
     async def send_board(self):
         """Le tableau de la journée, à jour : il reste à l'écran et change avec les événements."""
@@ -72,22 +96,28 @@ def _last_user_turn(context: RunContext[Visio]) -> llm.ChatMessage | None:
 
 
 def _speaker(context: RunContext[Visio]) -> rtc.RemoteParticipant | None:
-    """L'auteur de la dernière phrase : son identité est sur le message s'il vient d'une session d'écoute,
-    sinon c'est le participant lié à la session principale."""
-    turn = _last_user_turn(context)
-    identity = turn.extra.get("identity") if turn else None
-    if identity:
-        return context.userdata.room.remote_participants.get(identity)
+    """AIfred n'entend que la personne qui l'a activé."""
     return context.session.room_io.linked_participant
+
+
+def _team_asker(context: RunContext[Visio]) -> rtc.RemoteParticipant | None:
+    """Qui valide l'envoi demandé : la personne de l'équipe qui l'a demandé. Demandé par un invité, n'importe qui de l'équipe."""
+    speaker = _speaker(context)
+    return speaker if speaker and speaker.attributes.get("role") == "equipe" else None
 
 
 def _last_user_text(context: RunContext[Visio]) -> str:
     turn = _last_user_turn(context)
-    return (turn.text_content or "") if turn else ""
+    # Sans le « Prénom (rôle) : » du début : seuls ses mots comptent pour le « oui »
+    return (turn.text_content or "").split(" : ", 1)[-1] if turn else ""
+
+
+def _has_camera(p: rtc.RemoteParticipant) -> bool:
+    return any(t.source == rtc.TrackSource.SOURCE_CAMERA and not t.muted for t in p.track_publications.values())
 
 
 def _on_site(context: RunContext[Visio], name: str = "") -> rtc.RemoteParticipant | None:
-    """La personne à regarder : celle qu'on nomme, sinon le dernier de l'équipe entré dans la visio.
+    """La personne à regarder : celle qu'on nomme, sinon le dernier de l'équipe entré avec sa caméra.
     Le gérant, à distance, ouvre la visio : ce n'est pas lui qui montre la panne."""
     v = context.userdata
     wanted = db._plain(name)
@@ -95,14 +125,19 @@ def _on_site(context: RunContext[Visio], name: str = "") -> rtc.RemoteParticipan
         for p in v.room.remote_participants.values():
             if wanted in db._plain(p.name or ""):
                 return p
-    team = v.team()
-    return team[-1] if team else None
+    team = [p for p in v.team() if _has_camera(p)]
+    if team:
+        return team[-1]
+    return next((p for p in v.room.remote_participants.values() if _has_camera(p)), None)
 
 
 async def _take_photo(context: RunContext[Visio], name: str = "") -> tuple[bytes, str] | None:
     v = context.userdata
     on_site = _on_site(context, name)
-    jpeg = v.cameras.snapshot(prefer=on_site.identity if on_site else None)
+    if not on_site:
+        return None
+    await v.signal("regarde", who=on_site.identity)
+    jpeg = await v.cameras.capture(on_site.identity)
     if not jpeg:
         return None
     PHOTOS.mkdir(parents=True, exist_ok=True)
@@ -123,6 +158,8 @@ async def regarder(context: RunContext[Visio], question: str, personne: str = ""
         question: ce qu'il faut regarder sur l'image, en français.
         personne: le prénom de la personne à regarder, si on la nomme. Sinon, la personne sur place.
     """
+    if context.userdata.is_canal:
+        return "Sur le canal, il n'y a pas de caméra. Dis qu'il faut passer en visio pour que tu puisses voir."
     shot = await _take_photo(context, personne)
     if not shot:
         return "Aucune caméra n'est allumée. Demande à la personne sur place d'allumer sa caméra."
@@ -225,6 +262,7 @@ async def noter_intervention(context: RunContext[Visio], maison: str, equipement
     db.set_stay_status(house, "Réglé")
     v = context.userdata
     v.board_shown = True
+    v.noted = True
     await v.send_board()
     await v.card("note", title=house, text=f"{probleme} : {solution} ({par})")
     return "C'est noté dans l'historique et le tableau est à jour."
@@ -294,15 +332,17 @@ async def preparer_rapport(context: RunContext[Visio]) -> str:
     """Prépare l'envoi par email du rapport de la journée. N'envoie rien : il faut ensuite demander une
     confirmation à voix haute."""
     v = context.userdata
-    v.pending = {"kind": "rapport", "at": time.time()}
-    await v.card("mail_pending")
+    asker = _team_asker(context)
+    v.pending = {"kind": "rapport", "at": time.time(), "by": asker.identity if asker else ""}
+    await v.card("mail_pending", by=asker.identity if asker else "", by_name=asker.name if asker else "")
     return "Rien n'est envoyé. Demande maintenant : « Je t'envoie le rapport par email ? » Puis attends un oui clair avant confirmer_envoi."
 
 
 @function_tool
 async def preparer_invitation(context: RunContext[Visio], qui: str, motif: str, avec_photo: bool = False) -> str:
-    """Trouve la personne et prépare l'envoi par WhatsApp du lien de cette visio : quelqu'un de l'équipe, un
-    artisan ou un propriétaire. N'envoie rien : il faut ensuite demander une confirmation à voix haute.
+    """Trouve la personne et prépare l'envoi par WhatsApp du lien de la visio : quelqu'un de l'équipe, un
+    artisan ou un propriétaire. Sur le canal, prépare une visio à ouvrir ensuite. N'envoie rien : il faut
+    ensuite demander une confirmation à voix haute.
 
     Args:
         qui: le nom ou le métier (« Sébastien », « chauffagiste », « Whitmore »).
@@ -321,9 +361,12 @@ async def preparer_invitation(context: RunContext[Visio], qui: str, motif: str, 
     if avec_photo and not v.last_photo:
         await _take_photo(context)
     photo = v.last_photo if avec_photo else None
-    v.pending = {"kind": "invitation", "contact": contact, "reason": motif.strip()[:120], "photo": photo, "at": time.time()}
+    asker = _team_asker(context)
+    v.pending = {"kind": "invitation", "contact": contact, "reason": motif.strip()[:120], "photo": photo, "at": time.time(),
+                 "by": asker.identity if asker else ""}
     await v.card("pending", name=contact["name"], trade=contact["trade"], reason=v.pending["reason"],
-                 photo=f"/photos/{photo}" if photo else None)
+                 photo=f"/photos/{photo}" if photo else None,
+                 by=asker.identity if asker else "", by_name=asker.name if asker else "")
     with_photo = " avec la photo" if photo else ""
     return (f"Rien n'est envoyé. Demande maintenant : « J'envoie à {contact['name']}, {contact['trade']}, "
             f"le lien de la visio{with_photo} ? » Puis attends un oui clair avant confirmer_envoi.")
@@ -334,23 +377,36 @@ async def confirmer_envoi(context: RunContext[Visio]) -> str:
     """Envoie ce qui a été préparé (l'invitation ou le rapport). Seulement juste après un « oui » clair d'un
     membre de l'équipe."""
     v = context.userdata
-    pending = v.pending
-    if not pending or time.time() - pending["at"] > PENDING_SECONDS:
-        v.pending = None
-        return "Il n'y a rien à envoyer (ou la demande est trop ancienne). Prépare d'abord l'envoi."
-    speaker = _speaker(context)
-    if not speaker or speaker.attributes.get("role") != "equipe":
-        return "Seul un membre de l'équipe peut confirmer un envoi."
+    speaker = _team_asker(context)
+    if not speaker:
+        return "Seul un membre de l'équipe peut confirmer un envoi. Dis-le simplement."
     heard = db._plain(_last_user_text(context))
     if not YES_RE.search(heard) or NO_RE.search(heard):
         return "Je n'ai pas entendu de oui clair. Repose la question et attends la réponse."
+    return await send_pending(v, speaker.name or "L'équipe")
 
+
+async def send_pending(v: Visio, invited_by: str) -> str:
+    """Envoie ce qui attend : après le « oui » à voix haute, ou quand on touche Envoyer sur la carte."""
+    pending = v.pending
     v.pending = None
+    if not pending or time.time() - pending["at"] > PENDING_SECONDS:
+        return "Il n'y a rien à envoyer, ou la demande est trop ancienne."
     if pending["kind"] == "rapport":
-        return await _send_report(context)
+        return await _send_report(v)
     contact, reason, photo = pending["contact"], pending["reason"], pending["photo"]
-    invited_by = speaker.name or "L'équipe"
-    code = db.create_invitation(v.room.name, contact["id"], reason, photo, invited_by)
+    # Depuis le canal, la visio reste à ouvrir : la carte le propose
+    result = await _invite(v, contact, reason, photo, invited_by, v.visio_room(), offer_room=v.is_canal)
+    if not result["ok"]:
+        return "L'envoi WhatsApp a échoué, on peut réessayer."
+    if result["dry_run"]:
+        return "Mode essai : WhatsApp n'est pas branché, le lien est affiché à l'écran."
+    return f"C'est envoyé à {contact['name']}."
+
+
+async def _invite(v: Visio, contact: dict, reason: str, photo: str | None, invited_by: str, room: str,
+                  offer_room: bool = False) -> dict:
+    code = db.create_invitation(room, contact["id"], reason, photo, invited_by)
     link = f"{config.PUBLIC_URL}/v/{code}"
     image_url = f"{config.PUBLIC_URL}/photos/{photo}" if photo else None
     first_name = contact["name"].split()[0]
@@ -358,25 +414,39 @@ async def confirmer_envoi(context: RunContext[Visio]) -> str:
     if not result["ok"]:
         db.log(v.room.name, f"Échec de l'invitation à {contact['name']} : {result.get('error')}")
         await v.card("error", text=f"WhatsApp n'est pas parti vers {contact['name']} : {str(result.get('error'))[:150]}")
-        return "L'envoi WhatsApp a échoué. Dis-le simplement et propose de réessayer."
+        return result
     trial = " (mode essai, rien n'est parti)" if result["dry_run"] else ""
     db.log(v.room.name, f"Invitation WhatsApp à {contact['name']} ({contact['trade']}) : {reason}{trial}")
-    await v.card("sent", name=contact["name"], trade=contact["trade"], link=link, dry_run=result["dry_run"])
-    if result["dry_run"]:
-        return "Mode essai : WhatsApp n'est pas branché, le lien est affiché sur l'écran de l'équipe."
-    return f"C'est envoyé à {contact['name']}."
+    await v.card("sent", name=contact["name"], trade=contact["trade"], link=link, dry_run=result["dry_run"],
+                 room=room if offer_room else None, reason=reason)
+    return result
 
 
-async def _send_report(context: RunContext[Visio]) -> str:
-    v = context.userdata
+async def invite_many(v: Visio, contact_ids: list[int], reason: str, invited_by: str, room: str):
+    """Les personnes cochées quand on lance une visio : toucher « Lancer la visio » vaut confirmation.
+    Celles de l'équipe déjà sur le canal reçoivent une sonnerie, les autres un WhatsApp."""
+    for contact_id in contact_ids:
+        contact = db.contact(contact_id)
+        if not contact:
+            continue
+        first_name = db._plain(contact["name"]).split()[0]
+        here = next((p for p in v.team() if db._plain(p.name or " ").split()[0] == first_name), None)
+        if here:
+            payload = json.dumps({"type": "sonnerie", "room": room, "by_name": invited_by, "reason": reason}, ensure_ascii=False)
+            await v.room.local_participant.publish_data(payload, topic="aifred", destination_identities=[here.identity])
+        else:
+            await _invite(v, contact, reason, None, invited_by, room)
+
+
+async def _send_report(v: Visio) -> str:
     result = await mailer.send_report(db.stays())
     if not result["ok"]:
         db.log(v.room.name, f"Échec du rapport par email : {result.get('error')}")
         await v.card("error", text=f"L'email n'est pas parti : {str(result.get('error'))[:150]}")
-        return "L'email a échoué. Dis-le simplement et propose de réessayer."
+        return "L'email a échoué, on peut réessayer."
     await v.card("mail_sent", dry_run=result["dry_run"])
     if result["dry_run"]:
-        return "Mode essai : l'email n'est pas branché, rien n'est parti. Dis-le simplement."
+        return "Mode essai : l'email n'est pas branché, rien n'est parti."
     db.log(v.room.name, "Rapport de la journée envoyé par email")
     return "C'est envoyé."
 
@@ -384,9 +454,52 @@ async def _send_report(context: RunContext[Visio]) -> str:
 @function_tool
 async def annuler_envoi(context: RunContext[Visio]) -> str:
     """Annule l'envoi préparé, quand l'équipe dit non ou change d'avis."""
-    context.userdata.pending = None
-    await context.userdata.card("cancelled")
+    return await cancel_pending(context.userdata)
+
+
+async def cancel_pending(v: Visio) -> str:
+    v.pending = None
+    await v.card("cancelled")
     return "Annulé, rien n'est parti."
+
+
+FICHE_SYSTEM = """Tu remplis la fiche d'intervention d'une conciergerie à partir de ce qui a été dit pendant une visio.
+Tu n'inventes rien : un champ que l'échange ne permet pas de remplir reste vide. « solution » est ce qui a réglé la panne, pas ce qui est prévu. « par » contient les prénoms des personnes qui ont fait l'intervention, jamais « équipe » ni AIfred : vide si l'échange ne le dit pas.
+Réponds uniquement par un objet JSON avec ces champs, en français et en quelques mots chacun :
+{"maison": "", "equipement": "", "code": "", "panne": "", "diagnostic": "", "solution": "", "par": ""}"""
+
+
+async def write_report(v: Visio, history: llm.ChatContext) -> dict:
+    """La fiche d'intervention proposée à la fin d'une visio. Rien n'est enregistré avant la validation."""
+    if v.noted:
+        return {"deja_notee": True}
+    lines = [f"Sujet de la visio : {v.sujet}"] if v.sujet else []
+    heard = False
+    for item in history.items:
+        role = getattr(item, "role", None)
+        if role == "user" and item.text_content:
+            # Le nom et le rôle sont déjà au début de la phrase
+            lines.append(item.text_content)
+            heard = True
+        elif role == "assistant" and item.text_content:
+            lines.append(f"AIfred : {item.text_content}")
+    if not heard:
+        return {"vide": True}
+    response = await v.anthropic_client.messages.create(
+        model=config.LLM_MODEL,
+        max_tokens=1024,
+        system=FICHE_SYSTEM + "\nMaisons gérées : " + ", ".join(h["name"] for h in db.houses()),
+        messages=[{"role": "user", "content": "\n".join(lines)}],
+    )
+    text = "".join(b.text for b in response.content if b.type == "text")
+    match = re.search(r"\{.*\}", text, re.S)
+    if not match:
+        return {"vide": True}
+    try:
+        fiche = json.loads(match.group(0))
+    except ValueError:
+        return {"vide": True}
+    return {**fiche, "photo": f"/photos/{v.last_photo}" if v.last_photo else None}
 
 
 ALL = [regarder, ma_journee, preparer_rapport, chercher_dans_la_maison, chercher_interventions, verifier_vol,

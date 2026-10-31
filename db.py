@@ -137,6 +137,11 @@ def search_contacts(text: str) -> list[dict]:
     return [r for r in rows if any(w in _plain(f"{r['name']} {r['trade']}") for w in words)]
 
 
+def contacts() -> list[dict]:
+    with connect() as db:
+        return [dict(r) for r in db.execute("SELECT * FROM contacts ORDER BY role = 'equipe' DESC, name")]
+
+
 def contact(contact_id: int) -> dict | None:
     with connect() as db:
         row = db.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,)).fetchone()

@@ -1,9 +1,9 @@
 # AIfred
 
 AIfred (AI + Alfred, le majordome) est l'assistant IA des petites équipes de conciergerie de location
-saisonnière. Un employé est dans une maison devant une panne : il ouvre une visio sur son téléphone,
-AIfred regarde la caméra, trouve l'information dans la fiche de la maison et fait venir l'artisan ou le
-propriétaire dans la visio par WhatsApp. Tout ça sans faire la route.
+saisonnière. L'équipe se parle sur un canal, comme au talkie-walkie. Devant une panne, un employé passe
+en visio : AIfred regarde la caméra, trouve l'information dans la fiche de la maison et fait venir
+l'artisan ou le propriétaire par WhatsApp. Tout ça sans faire la route.
 
 > « AIfred, c'est le talkie-walkie avec des yeux, qui répond et qui agit. »
 
@@ -20,6 +20,16 @@ fictives.
 
 AIfred voit aussi par la caméra (`regarder`) : c'est un sens, comme la voix.
 
+## L'interface : deux boutons
+
+- **Le sélecteur Talkie | Visio.** Talkie : toute l'équipe sur le même canal, sans caméra. Visio : on se voit, avec les personnes qu'on invite. Dans les deux, tout le monde parle librement.
+- **Le bouton Équipe** : un toucher coupe ou rouvre son micro, quand c'est bruyant.
+- **Le bouton AIfred** : un clic pour lui parler, un second clic quand on a fini, et c'est à ce moment qu'il répond. On peut donc faire une pause. L'équipe et les invités l'ont tous. Il n'écoute que la personne qui a cliqué, et tout le monde entend la question et la réponse. Pendant sa réponse, la même personne peut le couper d'un clic. Si on oublie le second clic, il se coupe seul après 30 s de silence.
+- **La carte à valider** : Envoyer, Annuler, ou un clic sur AIfred pour lui dire « oui ».
+- **La fiche d'intervention** : à la fin d'une visio, AIfred la rédige à partir de ce qu'il a entendu. Rien n'est enregistré avant « Valider ».
+
+Le canal dédié pour parler à AIfred en privé est une évolution prévue, pas dans cette version.
+
 ## Comment ça marche
 
 ```
@@ -35,22 +45,26 @@ AIfred voit aussi par la caméra (`regarder`) : c'est un sens, comme la voix.
  └──────────────────────┘                  └─────────────────────────────────────────┘
 ```
 
-- **La visio** : LiveKit Cloud. Le premier membre de l'équipe qui ouvre une visio reçoit un jeton qui
-  demande l'agent « aifred » : LiveKit l'envoie dans la salle. L'agent tourne chez nous, pas chez
+- **Les salles** : LiveKit Cloud. Le canal `canal-equipe` et une salle par visio (`visio-…`). Le jeton de
+  l'équipe demande l'agent « aifred » : LiveKit l'envoie dans la salle. L'agent tourne chez nous, pas chez
   LiveKit (facturé comme un participant, 0,0005 $ la minute).
+- **Qui a activé AIfred** : c'est sur les attributs de l'agent, visibles par tous. Les boutons l'appellent
+  par RPC : `activer`, `valider`, `lancer_visio`, `terminer`.
 - **La voix** : Gradium, obligatoire (plugin `livekit-plugins-gradium` : reconnaissance en français, voix
   Leo). La clé Gradium reste sur le serveur, jamais dans la page.
-- **Le cerveau** : Claude Haiku 5.5 (`claude-haiku-5-5`) en effort `low`, le plus rapide pour la voix. Il voit la caméra
-  seulement quand on le lui demande (outil `regarder`), pour ne pas payer une image à chaque phrase.
+- **Le cerveau** : Claude Haiku 5.5 (`claude-haiku-5-5`) en effort `low`, le plus rapide pour la voix.
+- **Les yeux** : l'agent ne reçoit aucune vidéo. Quand on le lui demande (outil `regarder`), il demande une
+  image au téléphone de la personne : une image, pas un flux.
+- **L'écoute** : Gradium ne transcrit qu'entre les deux clics. Le reste du temps, rester connecté ne consomme
+  aucun crédit d'écoute.
 - **WhatsApp** : par Zernio, comme Plat du Jour. Sans clé Zernio, AIfred est en **mode essai** : rien ne
   part, le lien d'invitation s'affiche dans la visio pour l'ouvrir sur un autre téléphone.
 - **Les garde-fous** :
-  - un envoi ne part qu'après un « oui » d'un membre de l'équipe, vérifié dans le code
-    (`confirmer_envoi`), pas seulement demandé au modèle ;
+  - un envoi ne part qu'après un « oui » de la personne qui a demandé l'envoi, vérifié dans le code
+    (`confirmer_envoi`), ou quand cette personne touche Envoyer ;
+  - un artisan ou un propriétaire peut parler à AIfred, mais son « oui » ne fait rien partir ;
   - AIfred se présente comme une IA à chaque invité ;
-  - il ne lit jamais un numéro à voix haute ;
-  - à plusieurs, il ne répond que si on l'appelle « Alfred », ou à la personne à qui il vient de répondre,
-    dans les 20 s.
+  - il ne lit jamais un numéro à voix haute.
 
 Qui travaille où : Sébastien sur l'intelligence (`prompt.md`, `tools.py`), Patrick sur la vidéo et la voix
 (`agent.py`, `web/index.html`, `server.py`).
@@ -71,8 +85,8 @@ uv run python agent.py dev
 uv run uvicorn server:app --port 8080 --reload
 ```
 
-Ouvre <http://localhost:8080>, donne ton prénom, « Démarrer une visio ». AIfred dit bonjour. Essaie :
-« Alfred, c'est quoi ma journée ? », puis « fais venir le plombier ».
+Ouvre <http://localhost:8080>, donne ton prénom, « Entrer sur le canal ». Touche AIfred, dis « C'est quoi
+ma journée ? » et retouche-le. Puis essaie « Fais venir le plombier ».
 
 Sur un téléphone, la caméra exige une page en HTTPS : en local, passe par un tunnel
 (`cloudflared tunnel --url http://localhost:8080`) et mets son adresse dans `AIFRED_PUBLIC_URL`.
@@ -159,10 +173,12 @@ Puis `ZERNIO_API_KEY` et `ZERNIO_WHATSAPP_ACCOUNT_ID` dans les variables.
 
 ## Limites connues
 
-- La reconnaissance vocale tourne pour chaque personne, tant que la visio est ouverte : à surveiller sur
-  les crédits Gradium.
+- AIfred ne sert qu'une personne à la fois.
+- Sur le canal, les micros sont ouverts : tout s'entend, à chacun de couper le sien quand c'est bruyant.
+- Il n'entend que la personne qui clique : la fiche d'intervention ne contient que ce qu'on lui a dit ainsi.
+- Rester sur le canal toute la journée suppose l'écran allumé : sur iPhone, une page web s'endort avec l'écran.
 - Le seuil du mandat et les voyageurs sont cachés à l'artisan par une consigne au modèle, pas par le code :
   la fiche est un seul bloc de texte.
 - Pas encore de réponse aux messages WhatsApp entrants.
-- Délai mesuré en local avec des voix de synthèse : AIfred dit « Je regarde » environ 2,6 s après la fin d'une
-  phrase, dont 1 s pour décider que la phrase est finie ; Claude met ensuite 1,3 s par appel en moyenne.
+- Délai mesuré en local avec des voix de synthèse : AIfred dit « Je regarde » environ 1 s après le second clic.
+  Claude met ensuite 1,3 s par appel en moyenne.

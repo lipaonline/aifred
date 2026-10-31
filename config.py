@@ -33,6 +33,10 @@ LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "")
 LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "")
 LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
 AGENT_NAME = "aifred"
+# Le canal de l'équipe, et les visios qu'on ouvre depuis lui
+CANAL_PREFIX = "canal-"
+CANAL_ROOM = "canal-equipe"
+VISIO_PREFIX = "visio-"
 
 # Le cerveau et la voix. ANTHROPIC_API_KEY et GRADIUM_API_KEY sont lus par les SDK eux-mêmes.
 LLM_MODEL = os.environ.get("AIFRED_LLM_MODEL", "claude-haiku-5-5")
