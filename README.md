@@ -181,5 +181,5 @@ Puis `ZERNIO_API_KEY` et `ZERNIO_WHATSAPP_ACCOUNT_ID` dans les variables.
 - Le seuil du mandat et les voyageurs sont cachés à l'artisan par une consigne au modèle, pas par le code :
   la fiche est un seul bloc de texte.
 - Pas encore de réponse aux messages WhatsApp entrants.
-- Délai mesuré en local avec des voix de synthèse : AIfred dit « Je regarde » environ 1 s après le second clic.
+- Délai mesuré en local avec des voix de synthèse : AIfred dit « Une seconde » environ 1 s après le second clic.
   Claude met ensuite 1,3 s par appel en moyenne.

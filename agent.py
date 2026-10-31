@@ -49,7 +49,7 @@ AUTO_OFF_SECONDS = 30
 # Gradium rend parfois le dernier mot, surtout un nombre, après avoir annoncé la fin de la phrase
 TAIL_SECONDS = 0.8
 # Dit dès la fin de la phrase, sans attendre Claude : jamais de gros blanc
-ACK_QUESTION = ("Je regarde.", "Un instant.")
+ACK_QUESTION = ("Une seconde.", "Un instant.")
 ACK_YES = "Je m'en occupe."
 
 
