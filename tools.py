@@ -127,8 +127,9 @@ async def chercher_dans_la_maison(context: RunContext[Visio], question: str) -> 
     match = [h for h in houses if any(w in words for w in db._plain(h["name"]).split() if len(w) > 3)]
     for h in match or houses[:1]:
         await context.userdata.card("fiche", title=h["name"], text=h["notes"])
-    return json.dumps([{"maison": h["name"], "adresse": h["address"], "fiche": h["notes"]}
-                       for h in (match or houses)], ensure_ascii=False)
+    # Un objet, jamais une liste : le plugin Anthropic prend une liste JSON pour des blocs de contenu (erreur 400)
+    return json.dumps({"maisons": [{"maison": h["name"], "adresse": h["address"], "fiche": h["notes"]}
+                                   for h in (match or houses)]}, ensure_ascii=False)
 
 
 @function_tool
@@ -142,7 +143,8 @@ async def chercher_contact(context: RunContext[Visio], recherche: str) -> str:
     if not found:
         return f"Aucun contact pour « {recherche} »."
     # Pas de numéro de téléphone : AIfred ne le lit jamais à voix haute
-    return json.dumps([{"id": c["id"], "nom": c["name"], "metier": c["trade"]} for c in found], ensure_ascii=False)
+    return json.dumps({"contacts": [{"id": c["id"], "nom": c["name"], "metier": c["trade"]} for c in found]},
+                      ensure_ascii=False)
 
 
 @function_tool
