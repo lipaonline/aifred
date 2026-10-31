@@ -155,9 +155,10 @@ Puis `ZERNIO_API_KEY` et `ZERNIO_WHATSAPP_ACCOUNT_ID` dans les variables.
 
 ## Limites connues
 
-- AIfred n'écoute qu'une personne : le premier membre de l'équipe entré dans la salle. Écouter chaque
-  participant (et accepter le « oui » de n'importe quel membre de l'équipe) viendra ensuite.
-- La reconnaissance vocale tourne tant que la visio est ouverte : à surveiller sur les crédits Gradium.
+- La reconnaissance vocale tourne pour chaque personne, tant que la visio est ouverte : à surveiller sur
+  les crédits Gradium.
+- Le seuil du mandat et les voyageurs sont cachés à l'artisan par une consigne au modèle, pas par le code :
+  la fiche est un seul bloc de texte.
 - Pas encore de réponse aux messages WhatsApp entrants.
 - AIfred met environ 6 s à répondre après la fin d'une phrase, en local comme en ligne : à réduire avant la
   démo.

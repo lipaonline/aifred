@@ -7,9 +7,10 @@ L'agent AIfred : il entre dans la visio LiveKit, écoute, répond avec la voix G
 Le serveur web demande l'agent « aifred » dans le jeton du premier membre de l'équipe : LiveKit
 Cloud l'envoie dans la salle à sa création. L'agent tourne chez nous (Bunny), pas chez LiveKit.
 
-Pour l'instant AIfred écoute une seule personne : la première de l'équipe entrée dans la salle
-(le participant lié). Quand d'autres humains sont là, il ne répond que si on l'appelle « Alfred »,
-ou dans les 20 secondes qui suivent sa dernière réponse.
+AIfred écoute tout le monde. La première personne de l'équipe passe par la session principale ;
+chaque autre personne a sa session d'écoute (Oreilles), qui lui transmet ce qu'elle entend en disant
+qui a parlé. Quand plusieurs humains sont là, il ne répond que si on l'appelle « Alfred », ou dans
+les 20 secondes qui suivent sa dernière réponse.
 """
 
 import asyncio
@@ -89,14 +90,43 @@ class Aifred(Agent):
         return [p for p in self._room.remote_participants.values()
                 if p.kind != rtc.ParticipantKind.PARTICIPANT_KIND_AGENT]
 
-    async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
-        heard = db._plain(new_message.text_content or "")
+    def _should_answer(self, text: str) -> bool:
+        heard = db._plain(text)
         addressed = "alfred" in heard or "alfre" in heard
         follow_up = time.time() - self.last_reply < FOLLOW_UP_SECONDS
         waiting_yes = self.session.userdata.pending is not None
         # Seul avec AIfred, on lui parle forcément. À plusieurs, on se parle entre humains.
-        if len(self._humans()) > 1 and not (addressed or follow_up or waiting_yes):
+        return len(self._humans()) <= 1 or addressed or follow_up or waiting_yes
+
+    async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
+        if not self._should_answer(new_message.text_content or ""):
             raise StopResponse()
+
+    async def heard(self, participant: rtc.RemoteParticipant, text: str) -> None:
+        """Une autre personne a parlé. Son identité reste sur le message : confirmer_invitation la vérifie."""
+        role = participant.attributes.get("role", "invité")
+        message = llm.ChatMessage(role="user", content=[f"{participant.name} ({role}) : {text}"],
+                                  extra={"identity": participant.identity})
+        if self._should_answer(text):
+            self.session.generate_reply(user_input=message)
+        else:
+            # Il ne répond pas, mais il retient : « qu'est-ce que Marc vient de dire ? »
+            chat_ctx = self.chat_ctx.copy()
+            chat_ctx.items.append(message)
+            await self.update_chat_ctx(chat_ctx)
+
+
+class Oreilles(Agent):
+    """La session d'écoute d'une personne en plus de la première : ni voix ni cerveau."""
+
+    def __init__(self, aifred: Aifred, participant: rtc.RemoteParticipant):
+        super().__init__(instructions="Transcription seulement.")
+        self._aifred = aifred
+        self._participant = participant
+
+    async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
+        await self._aifred.heard(self._participant, new_message.text_content or "")
+        raise StopResponse()
 
 
 def prewarm(proc: JobProcess):
@@ -111,6 +141,7 @@ server = AgentServer(setup_fnc=prewarm, num_idle_processes=1)
 async def entrypoint(ctx: JobContext):
     cameras = Cameras(ctx.room)
     await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
+    first = await ctx.wait_for_participant()
     agent = Aifred(ctx.room)
 
     session = AgentSession[tools.Visio](
@@ -128,6 +159,30 @@ async def entrypoint(ctx: JobContext):
         if ev.old_state == "speaking":
             agent.last_reply = time.time()
 
+    ears: dict[str, AgentSession] = {}
+    tasks: set[asyncio.Task] = set()
+
+    def _run(coro):
+        task = asyncio.create_task(coro)
+        tasks.add(task)
+        task.add_done_callback(tasks.discard)
+
+    async def _listen(participant: rtc.RemoteParticipant):
+        if (participant.identity == first.identity or participant.identity in ears
+                or participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_AGENT):
+            return
+        ear = ears[participant.identity] = AgentSession(stt=gradium.STT(language="fr"), vad=ctx.proc.userdata["vad"])
+        await ear.start(
+            agent=Oreilles(agent, participant),
+            room=ctx.room,
+            room_options=room_io.RoomOptions(
+                participant_identity=participant.identity,
+                text_input=False,
+                audio_output=False,
+                close_on_disconnect=False,
+            ),
+        )
+
     @ctx.room.on("participant_connected")
     def _on_join(participant: rtc.RemoteParticipant):
         role = participant.attributes.get("role")
@@ -136,15 +191,25 @@ async def entrypoint(ctx: JobContext):
             # Règle : face à un tiers, AIfred se présente comme une IA
             session.say(f"Bonjour {participant.name}. Je suis AIfred, une intelligence artificielle "
                         f"qui assiste l'équipe pendant cette visio.")
+        _run(_listen(participant))
+
+    @ctx.room.on("participant_disconnected")
+    def _on_leave(participant: rtc.RemoteParticipant):
+        ear = ears.pop(participant.identity, None)
+        if ear:
+            _run(ear.aclose())
 
     await session.start(
         agent=agent,
         room=ctx.room,
         room_options=room_io.RoomOptions(
+            participant_identity=first.identity,
             # Une coupure réseau du membre de l'équipe ne doit pas faire partir AIfred
             close_on_disconnect=False,
         ),
     )
+    for participant in ctx.room.remote_participants.values():
+        _run(_listen(participant))
     db.log(ctx.room.name, "AIfred est entré dans la visio")
     session.say("Bonjour, c'est AIfred. Je vous écoute.")
 

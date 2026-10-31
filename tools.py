@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 import anthropic
 from livekit import rtc
-from livekit.agents import RunContext, function_tool
+from livekit.agents import RunContext, function_tool, llm
 
 import config
 import db
@@ -52,22 +52,33 @@ class Visio:
             await self.room.local_participant.publish_data(payload, topic="aifred", destination_identities=team)
 
 
+def _last_user_turn(context: RunContext[Visio]) -> llm.ChatMessage | None:
+    for item in reversed(context.session.history.items):
+        if getattr(item, "role", None) == "user":
+            return item
+    return None
+
+
 def _speaker(context: RunContext[Visio]) -> rtc.RemoteParticipant | None:
-    """La personne qu'AIfred écoute (le participant lié à la session)."""
+    """L'auteur de la dernière phrase : son identité est sur le message s'il vient d'une session d'écoute,
+    sinon c'est le participant lié à la session principale."""
+    turn = _last_user_turn(context)
+    identity = turn.extra.get("identity") if turn else None
+    if identity:
+        return context.userdata.room.remote_participants.get(identity)
     return context.session.room_io.linked_participant
 
 
 def _last_user_text(context: RunContext[Visio]) -> str:
-    for item in reversed(context.session.history.items):
-        if getattr(item, "role", None) == "user":
-            return item.text_content or ""
-    return ""
+    turn = _last_user_turn(context)
+    return (turn.text_content or "") if turn else ""
 
 
 async def _take_photo(context: RunContext[Visio]) -> tuple[bytes, str] | None:
     v = context.userdata
-    speaker = _speaker(context)
-    jpeg = v.cameras.snapshot(prefer=speaker.identity if speaker else None)
+    # La caméra de la personne sur place, même si c'est l'artisan qui demande
+    on_site = context.session.room_io.linked_participant
+    jpeg = v.cameras.snapshot(prefer=on_site.identity if on_site else None)
     if not jpeg:
         return None
     PHOTOS.mkdir(parents=True, exist_ok=True)
