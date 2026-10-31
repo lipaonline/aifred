@@ -1,0 +1,23 @@
+{
+  "contacts": [
+    { "name": "Marc Dubois", "trade": "plombier", "role": "artisan", "phone": "+33600000001" },
+    { "name": "Karim Benali", "trade": "électricien", "role": "artisan", "phone": "+33600000002" },
+    { "name": "Julien Morel", "trade": "serrurier", "role": "artisan", "phone": "+33600000003" },
+    { "name": "James Whitmore", "trade": "propriétaire du Chalet Les Mélèzes", "role": "proprietaire", "phone": "+447700900001" },
+    { "name": "Hélène Garnier", "trade": "propriétaire de la Villa Les Oyats", "role": "proprietaire", "phone": "+33600000004" }
+  ],
+  "houses": [
+    {
+      "name": "Chalet Les Mélèzes",
+      "address": "Route du Bouchet, Megève",
+      "owner": "James Whitmore",
+      "notes": "Vanne d'arrêt générale : local technique au sous-sol, à gauche de la chaudière. Douche de la suite parentale : mitigeur thermostatique Grohe Grohtherm 1000, cartouche réf. 47 175, posé en 2022. Tableau électrique : garage, derrière la porte. Seuil du mandat : 300 € HT, au-delà il faut l'accord du propriétaire. Voyageurs actuels : famille Connor, départ samedi."
+    },
+    {
+      "name": "Villa Les Oyats",
+      "address": "Avenue de la Pège, Saint-Hilaire-de-Riez",
+      "owner": "Hélène Garnier",
+      "notes": "Vanne d'arrêt : regard compteur devant le portail, clé dans la boîte à clés. Chauffe-eau : thermodynamique 200 L dans le cellier. Portail motorisé : boîtier Somfy, réarmement par le disjoncteur 6 du tableau. Seuil du mandat : 200 € HT."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+[project]
+name = "aifred"
+version = "0.1.0"
+description = "AIfred : l'assistant IA des conciergeries, dans la visio du téléphone"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "livekit-agents[anthropic,gradium,silero,images]~=1.8.10",
+    "livekit-api~=1.2",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+]
+
+[tool.uv]
+package = false

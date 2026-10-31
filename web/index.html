@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<title>AIfred</title>
+<!-- Même SDK que LearnFloo (livekit-client 2.22.2), sans build : la page est servie telle quelle -->
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.22.2/dist/livekit-client.umd.js"></script>
+<style>
+  :root {
+    --bg: #101418; --panel: #1b2128; --line: #2c343d; --text: #eef2f5; --muted: #9aa6b2;
+    --accent: #e9b44c; --ok: #4cc38a; --danger: #e5534b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  /* Accueil */
+  .welcome { min-height: 100%; display: flex; flex-direction: column; justify-content: center;
+    gap: 16px; padding: 24px 16px; max-width: 420px; margin: 0 auto; }
+  .brand { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
+  .brand b { color: var(--accent); }
+  .lead { color: var(--muted); margin: 0; }
+  .welcome label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  .welcome input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); font: inherit; }
+  .primary { width: 100%; padding: 16px; border-radius: 14px; background: var(--accent); color: #1a1405;
+    font-weight: 650; font-size: 17px; }
+  .primary:disabled { opacity: .5; }
+  .error { color: var(--danger); min-height: 1.4em; margin: 0; }
+  .ai-note { font-size: 14px; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 10px; }
+
+  /* Visio */
+  .call { position: fixed; inset: 0; display: flex; flex-direction: column; }
+  .stage { flex: 1; display: grid; gap: 6px; padding: 6px; grid-template-columns: 1fr; grid-auto-rows: 1fr;
+    min-height: 0; }
+  .stage[data-count="2"], .stage[data-count="3"], .stage[data-count="4"] { grid-template-columns: 1fr 1fr; }
+  .stage[data-count="2"] { grid-template-columns: 1fr; }
+  .tile { position: relative; background: var(--panel); border-radius: 14px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; min-height: 0; }
+  .tile video { width: 100%; height: 100%; object-fit: cover; display: none; }
+  .tile.has-video video { display: block; }
+  .tile.has-video .avatar { display: none; }
+  .avatar { width: 84px; height: 84px; border-radius: 50%; background: #2c343d; display: grid;
+    place-items: center; font-size: 28px; font-weight: 650; }
+  .tile.agent .avatar { background: radial-gradient(circle at 35% 30%, #ffd98a, var(--accent) 55%, #8a6015);
+    color: #1a1405; font-size: 22px; }
+  .tile.agent.speaking .avatar { animation: pulse 1s ease-in-out infinite; }
+  .tile.speaking { outline: 3px solid var(--accent); outline-offset: -3px; }
+  @keyframes pulse { 50% { transform: scale(1.12); box-shadow: 0 0 0 14px rgba(233,180,76,.15); } }
+  .name { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.55); padding: 3px 9px;
+    border-radius: 99px; font-size: 13px; }
+  .self { position: absolute; right: 12px; top: calc(12px + env(safe-area-inset-top)); width: 96px;
+    aspect-ratio: 3/4; border-radius: 12px; overflow: hidden; background: var(--panel);
+    border: 2px solid rgba(255,255,255,.2); z-index: 2; }
+  .self video { width: 100%; height: 100%; object-fit: cover; }
+  .self.front video { transform: scaleX(-1); }
+  .subtitle { position: absolute; left: 12px; right: 12px; bottom: calc(96px + env(safe-area-inset-bottom));
+    text-align: center; z-index: 2; pointer-events: none; }
+  .subtitle span { background: rgba(0,0,0,.7); padding: 6px 12px; border-radius: 10px; font-size: 15px;
+    display: inline-block; max-width: 100%; }
+  .cards { position: absolute; left: 12px; right: 120px; top: calc(12px + env(safe-area-inset-top)); z-index: 2;
+    display: flex; flex-direction: column; gap: 8px; max-height: 55%; overflow-y: auto; }
+  .card { background: rgba(27,33,40,.95); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+    font-size: 14px; }
+  .card strong { display: block; margin-bottom: 2px; }
+  .card img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-top: 6px; }
+  .card.pending { border-color: var(--accent); }
+  .card.sent { border-color: var(--ok); }
+  .card.error { border-color: var(--danger); }
+  .card .link { word-break: break-all; color: var(--accent); }
+  .card .close { float: right; background: none; color: var(--muted); padding: 0 0 0 8px; }
+  .bar { display: flex; justify-content: center; gap: 12px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    background: var(--bg); }
+  .bar button { width: 56px; height: 56px; border-radius: 50%; background: var(--panel); display: grid;
+    place-items: center; }
+  .bar button.off { background: #3a2a2a; color: var(--danger); }
+  .bar button.leave { background: var(--danger); }
+  .bar svg { width: 24px; height: 24px; }
+  .toast { position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: var(--panel); border: 1px solid var(--line); padding: 10px 14px; border-radius: 10px; z-index: 5; }
+  .unmute { position: fixed; inset: auto 16px calc(100px + env(safe-area-inset-bottom)); z-index: 6; }
+</style>
+</head>
+<body>
+
+<!-- Accueil de l'équipe -->
+<section class="welcome" id="team-home" hidden>
+  <div class="brand">A<b>I</b>fred</div>
+  <p class="lead">L'assistant de l'équipe, dans la visio. Montre la panne, il s'occupe du reste.</p>
+  <div><label for="name">Ton prénom</label><input id="name" autocomplete="given-name" maxlength="40"></div>
+  <div id="code-row" hidden><label for="code">Code de l'équipe</label><input id="code" autocomplete="off"></div>
+  <button class="primary" id="start">Démarrer une visio</button>
+  <p class="error" id="team-error"></p>
+</section>
+
+<!-- Accueil d'un invité (lien reçu par WhatsApp) -->
+<section class="welcome" id="guest-home" hidden>
+  <div class="brand">A<b>I</b>fred</div>
+  <p class="lead" id="guest-text"></p>
+  <p class="ai-note">Une intelligence artificielle, AIfred, assiste l'équipe pendant cette visio. Votre caméra et votre micro seront utilisés.</p>
+  <button class="primary" id="guest-join">Rejoindre la visio</button>
+  <p class="error" id="guest-error"></p>
+</section>
+
+<!-- La visio -->
+<section class="call" id="call" hidden>
+  <div class="stage" id="stage"></div>
+  <div class="self" id="self"><video autoplay playsinline muted></video></div>
+  <div class="cards" id="cards"></div>
+  <div class="subtitle" id="subtitle" hidden><span></span></div>
+  <nav class="bar">
+    <button id="mic" aria-label="Micro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button id="cam" aria-label="Caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg></button>
+    <button id="flip" aria-label="Retourner la caméra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2"/></svg></button>
+    <button id="share" aria-label="Partager le lien avec l'équipe" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+    <button id="leave" class="leave" aria-label="Quitter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15c5-5 11-5 16 0l-2 3-3-1v-3a12 12 0 0 0-6 0v3l-3 1z"/></svg></button>
+  </nav>
+</section>
+
+<button class="primary unmute" id="unmute" hidden>Activer le son</button>
+
+<script>
+const LK = LivekitClient;
+const $ = (s) => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const guestCode = location.pathname.startsWith('/v/') ? location.pathname.slice(3) : null;
+const store = {
+  get: (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+};
+let room = null;
+let facing = guestCode ? 'user' : 'environment';  // l'équipe montre la panne, l'invité se montre
+const tiles = new Map();
+
+// ---------- Accueil ----------
+
+if (params.get('equipe')) {
+  store.set('aifred-code', params.get('equipe'));
+  params.delete('equipe');
+  history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
+}
+
+if (guestCode) {
+  $('#guest-home').hidden = false;
+  fetch('/api/guest/' + encodeURIComponent(guestCode)).then(async (r) => {
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail);
+    $('#guest-text').textContent = `Bonjour ${data.name}. ${data.invited_by} vous invite à une visio pour : ${data.reason}.`;
+  }).catch((e) => { $('#guest-error').textContent = e.message; $('#guest-join').disabled = true; });
+  $('#guest-join').onclick = () => join('/api/guest/join', { code: guestCode }, '#guest-error', '#guest-join');
+} else {
+  $('#team-home').hidden = false;
+  $('#name').value = store.get('aifred-name');
+  $('#code-row').hidden = !!store.get('aifred-code');
+  if (params.get('salle')) $('#start').textContent = 'Rejoindre la visio';
+  $('#start').onclick = () => {
+    const name = $('#name').value.trim();
+    if (!name) { $('#team-error').textContent = 'Ton prénom, pour que les autres sachent qui parle.'; return; }
+    if ($('#code').value.trim()) store.set('aifred-code', $('#code').value.trim());
+    store.set('aifred-name', name);
+    join('/api/team/join', { name, code: store.get('aifred-code'), room: params.get('salle') || null },
+         '#team-error', '#start');
+  };
+}
+
+async function join(endpoint, body, errorSel, buttonSel) {
+  $(errorSel).textContent = '';
+  $(buttonSel).disabled = true;
+  try {
+    const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await r.json();
+    if (!r.ok) {
+      if (r.status === 403) { store.set('aifred-code', ''); $('#code-row').hidden = false; }
+      throw new Error(data.detail || 'Erreur ' + r.status);
+    }
+    await connect(data);
+  } catch (e) {
+    $(errorSel).textContent = e.message;
+    $(buttonSel).disabled = false;
+  }
+}
+
+// ---------- Visio ----------
+
+async function connect({ token, url, room: roomName }) {
+  room = new LK.Room({
+    // Comme LearnFloo : chacun reçoit les caméras à la taille affichée, personne n'envoie une couche inutile
+    adaptiveStream: true,
+    dynacast: true,
+    videoCaptureDefaults: { facingMode: facing, resolution: LK.VideoPresets.h720.resolution },
+    audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  });
+  room
+    .on(LK.RoomEvent.ParticipantConnected, refresh)
+    .on(LK.RoomEvent.ParticipantDisconnected, refresh)
+    .on(LK.RoomEvent.TrackSubscribed, (track) => {
+      if (track.kind === 'audio') document.body.append(track.attach());
+      refresh();
+    })
+    .on(LK.RoomEvent.TrackUnsubscribed, (track) => {
+      if (track.kind === 'audio') track.detach().forEach((el) => el.remove());
+      refresh();
+    })
+    .on(LK.RoomEvent.TrackMuted, refresh)
+    .on(LK.RoomEvent.TrackUnmuted, refresh)
+    .on(LK.RoomEvent.LocalTrackPublished, refresh)
+    .on(LK.RoomEvent.LocalTrackUnpublished, refresh)
+    .on(LK.RoomEvent.ActiveSpeakersChanged, (speakers) => {
+      const ids = new Set(speakers.map((p) => p.identity));
+      for (const [id, el] of tiles) el.classList.toggle('speaking', ids.has(id));
+    })
+    .on(LK.RoomEvent.DataReceived, (payload, _participant, _kind, topic) => {
+      if (topic === 'aifred') addCard(JSON.parse(new TextDecoder().decode(payload)));
+    })
+    .on(LK.RoomEvent.AudioPlaybackStatusChanged, () => { $('#unmute').hidden = room.canPlaybackAudio; })
+    .on(LK.RoomEvent.Reconnecting, () => toast('Connexion perdue, je reconnecte…'))
+    .on(LK.RoomEvent.Reconnected, () => toast('Reconnecté'))
+    .on(LK.RoomEvent.Disconnected, () => location.reload());
+
+  // Sous-titres de ce que dit AIfred (transcription publiée par l'agent)
+  room.registerTextStreamHandler('lk.transcription', async (reader, info) => {
+    const speaker = room.remoteParticipants.get(info.identity);
+    if (!speaker?.isAgent) return;
+    let text = '';
+    for await (const chunk of reader) { text += chunk; showSubtitle(text); }
+    setTimeout(() => { if ($('#subtitle span').textContent === text) $('#subtitle').hidden = true; }, 4000);
+  });
+
+  await room.connect(url, token);
+  await room.startAudio();
+  $('#team-home').hidden = $('#guest-home').hidden = true;
+  $('#call').hidden = false;
+  $('#share').hidden = !!guestCode;
+  try { await room.localParticipant.setMicrophoneEnabled(true); } catch { toast('Micro refusé : autorise-le dans le navigateur.'); }
+  try { await room.localParticipant.setCameraEnabled(true); } catch { toast('Caméra refusée : autorise-la dans le navigateur.'); }
+  if (!guestCode) history.replaceState(null, '', '/?salle=' + roomName);
+  refresh();
+}
+
+function tileFor(p) {
+  let el = tiles.get(p.identity);
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'tile';
+    el.innerHTML = '<video autoplay playsinline muted></video><div class="avatar"></div><span class="name"></span>';
+    $('#stage').append(el);
+    tiles.set(p.identity, el);
+  }
+  return el;
+}
+
+function refresh() {
+  if (!room) return;
+  for (const [id, el] of tiles) {
+    if (!room.remoteParticipants.has(id)) { el.remove(); tiles.delete(id); }
+  }
+  for (const p of room.remoteParticipants.values()) {
+    const el = tileFor(p);
+    const name = p.isAgent ? 'AIfred · IA' : (p.name || 'Invité');
+    el.classList.toggle('agent', p.isAgent);
+    el.querySelector('.name').textContent = name;
+    el.querySelector('.avatar').textContent = p.isAgent ? 'AI' : name.slice(0, 1).toUpperCase();
+    const pub = p.getTrackPublication(LK.Track.Source.Camera);
+    const track = pub && pub.isSubscribed && !pub.isMuted ? pub.videoTrack : null;
+    const video = el.querySelector('video');
+    if (track && video.dataset.sid !== track.sid) { track.attach(video); video.dataset.sid = track.sid; }
+    if (!track && video.dataset.sid) { video.srcObject = null; delete video.dataset.sid; }
+    el.classList.toggle('has-video', !!track);
+  }
+  $('#stage').dataset.count = tiles.size;
+
+  const lp = room.localParticipant;
+  const own = lp.getTrackPublication(LK.Track.Source.Camera);
+  const selfVideo = $('#self video');
+  if (own?.videoTrack && !own.isMuted) own.videoTrack.attach(selfVideo);
+  $('#self').hidden = !(own?.videoTrack && !own.isMuted);
+  $('#self').classList.toggle('front', facing === 'user');
+  $('#mic').classList.toggle('off', !lp.isMicrophoneEnabled);
+  $('#cam').classList.toggle('off', !lp.isCameraEnabled);
+}
+
+$('#mic').onclick = async () => { await room.localParticipant.setMicrophoneEnabled(!room.localParticipant.isMicrophoneEnabled); refresh(); };
+$('#cam').onclick = async () => { await room.localParticipant.setCameraEnabled(!room.localParticipant.isCameraEnabled); refresh(); };
+$('#flip').onclick = async () => {
+  facing = facing === 'user' ? 'environment' : 'user';
+  const pub = room.localParticipant.getTrackPublication(LK.Track.Source.Camera);
+  if (pub?.videoTrack) await pub.videoTrack.restartTrack({ facingMode: facing });
+  refresh();
+};
+$('#share').onclick = async () => {
+  const link = location.origin + '/?salle=' + room.name;
+  try {
+    if (navigator.share) await navigator.share({ title: 'Visio AIfred', url: link });
+    else { await navigator.clipboard.writeText(link); toast('Lien copié (pour l\'équipe seulement)'); }
+  } catch {}
+};
+$('#leave').onclick = () => room.disconnect();
+$('#unmute').onclick = () => room.startAudio();
+
+// ---------- Cartes envoyées par AIfred ----------
+
+function addCard(c) {
+  const el = document.createElement('div');
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const img = (src) => src ? `<img src="${esc(src)}" alt="">` : '';
+  const close = '<button class="close" aria-label="Fermer">✕</button>';
+  if (c.type === 'photo') { el.className = 'card'; el.innerHTML = `${close}<strong>Photo prise</strong>${img(c.url)}`; }
+  else if (c.type === 'fiche') { el.className = 'card'; el.innerHTML = `${close}<strong>${esc(c.title)}</strong>${esc(c.text)}`; }
+  else if (c.type === 'pending') {
+    el.className = 'card pending';
+    el.innerHTML = `${close}<strong>En attente de ton « oui »</strong>WhatsApp à ${esc(c.name)} (${esc(c.trade)}) : ${esc(c.reason)}${img(c.photo)}`;
+  } else if (c.type === 'sent') {
+    el.className = 'card sent';
+    el.innerHTML = `${close}<strong>${c.dry_run ? 'Mode essai : rien n\'est parti' : 'Invitation envoyée'}</strong>`
+      + `${esc(c.name)} (${esc(c.trade)})${c.dry_run ? ', ouvre ce lien sur un autre téléphone :' : ''}`
+      + `<br><a class="link" href="${esc(c.link)}" target="_blank" rel="noopener">${esc(c.link)}</a>`;
+    document.querySelectorAll('.card.pending').forEach((p) => p.remove());
+  } else if (c.type === 'cancelled') {
+    document.querySelectorAll('.card.pending').forEach((p) => p.remove());
+    return toast('Invitation annulée');
+  } else if (c.type === 'error') { el.className = 'card error'; el.innerHTML = `${close}${esc(c.text)}`; }
+  else return;
+  el.querySelector('.close').onclick = () => el.remove();
+  $('#cards').prepend(el);
+  while ($('#cards').children.length > 4) $('#cards').lastChild.remove();
+}
+
+function showSubtitle(text) {
+  $('#subtitle span').textContent = text;
+  $('#subtitle').hidden = false;
+}
+
+function toast(text) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = text;
+  document.body.append(el);
+  setTimeout(() => el.remove(), 3000);
+}
+</script>
+</body>
+</html>
