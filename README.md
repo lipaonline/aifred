@@ -76,19 +76,26 @@ Sur un téléphone, la caméra exige une page en HTTPS : en local, passe par un 
 
 ## Mettre en ligne sur Bunny Magic Containers
 
-Une seule image Docker fait tourner l'agent et le serveur web (`start.sh`).
+Adresse : <https://aifred.byfloo.com>. Une seule image Docker fait tourner l'agent et le serveur web
+(`start.sh`). Bunny ne construit pas l'image : GitHub Actions le fait à chaque push et la range sur
+`ghcr.io/lipaonline/aifred` (`.github/workflows/deploy.yml`). Un push sur `main` la met en ligne.
 
-1. Pousse ce dépôt sur GitHub.
-2. Bunny → **Magic Containers** → **Create application** → depuis le dépôt GitHub (le `Dockerfile` est
-   détecté).
-3. **Une seule région (Paris), une seule instance** : la base SQLite est sur le disque du conteneur.
-4. Ressources : 1 vCPU et 2 Go de mémoire pour commencer.
-5. **Disque persistant** monté sur `/data` (base et photos). Bunny ne le sauvegarde pas : pour le
+Mise en place, une seule fois :
+
+1. Bunny → **Magic Containers** → **Image Registries** → GitHub : `lipaonline` et un
+   [jeton `read:packages`](https://github.com/settings/tokens/new?scopes=read:packages&description=bunny-aifred)
+   (le dépôt est privé, l'image aussi).
+2. **Add App**, conteneur nommé `app`, image `lipaonline/aifred`, tag : le dernier commit construit.
+3. **Une seule région, une seule instance** : la base SQLite est sur le disque du conteneur.
+4. **Disque persistant** monté sur `/data` (base et photos). Bunny ne le sauvegarde pas : pour le
    hackathon, ça suffit.
-6. Port public **8080**, puis note l'adresse donnée par Bunny (`https://….b-cdn.net`).
-7. Variables : celles de `.env.example`, avec `AIFRED_PUBLIC_URL` = l'adresse Bunny et un
-   `AIFRED_TEAM_CODE` (`openssl rand -hex 8`). Redéploie.
-8. Donne à l'équipe le lien `https://….b-cdn.net/?equipe=<code>` : le code reste dans le téléphone.
+5. **Endpoint CDN** sur le port **8080**, puis le domaine `aifred.byfloo.com` : un CNAME dans la zone
+   Bunny DNS vers l'adresse de la pull zone, et le certificat gratuit.
+6. Variables : celles de `.env.example`, avec `AIFRED_PUBLIC_URL=https://aifred.byfloo.com` et un
+   `AIFRED_TEAM_CODE` (`openssl rand -hex 8`).
+7. Dans les réglages du dépôt GitHub : la variable `APP_ID` (id de l'application) et le secret
+   `BUNNYNET_API_KEY`, pour que les push sur `main` déploient.
+8. Donne à l'équipe le lien `https://aifred.byfloo.com/?equipe=<code>` : le code reste dans le téléphone.
 
 À vérifier au premier déploiement : que l'agent rejoint bien la salle depuis Bunny (il sort vers LiveKit
 Cloud en UDP, ou en TCP si l'UDP est bloqué).
@@ -142,6 +149,7 @@ Puis `ZERNIO_API_KEY` et `ZERNIO_WHATSAPP_ACCOUNT_ID` dans les variables.
 | `whatsapp.py` | envoi du modèle WhatsApp par Zernio |
 | `web/index.html` | la page du téléphone (équipe et invités) |
 | `Dockerfile`, `start.sh` | l'image pour Bunny |
+| `.github/workflows/deploy.yml` | construit l'image, et la met en ligne depuis `main` |
 
 ## Limites connues
 

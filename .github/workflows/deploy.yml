@@ -1,0 +1,38 @@
+# Construit l'image Docker à chaque push et la range sur ghcr.io.
+# Sur main, elle part aussi en ligne sur Bunny Magic Containers.
+name: Déploiement
+
+on:
+  push:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Magic Containers n'accepte que linux/amd64
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      # APP_ID (variable du dépôt) et BUNNYNET_API_KEY (secret du dépôt) : voir le README
+      - if: github.ref == 'refs/heads/main' && vars.APP_ID != ''
+        uses: BunnyWay/actions/container-update-image@main
+        with:
+          app_id: ${{ vars.APP_ID }}
+          api_key: ${{ secrets.BUNNYNET_API_KEY }}
+          container: app
+          image_tag: ${{ github.sha }}
