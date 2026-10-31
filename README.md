@@ -93,7 +93,31 @@ Une seule image Docker fait tourner l'agent et le serveur web (`start.sh`).
 À vérifier au premier déploiement : que l'agent rejoint bien la salle depuis Bunny (il sort vers LiveKit
 Cloud en UDP, ou en TCP si l'UDP est bloqué).
 
-## Le modèle WhatsApp (à faire approuver par Meta)
+## WhatsApp pour la démo : le bac à sable Zernio
+
+Zernio prête gratuitement un numéro américain de test (+1 202 908 7457). Pas de modèle à faire approuver :
+on envoie un message libre (texte, photo et lien). Limites :
+
+- **un seul téléphone destinataire à la fois** (celui qui joue l'artisan), 50 messages par jour ;
+- ce téléphone est activé d'avance, et l'activation dure 7 jours ;
+- il doit **avoir écrit au numéro du bac à sable dans les 24 dernières heures** : avant chaque démo,
+  envoie « bonjour » depuis ce téléphone ;
+- le message arrive d'un numéro américain au nom de Zernio, pas d'AIfred.
+
+Mise en place :
+
+```bash
+# dans .env : ZERNIO_API_KEY=… puis
+uv run python whatsapp.py sandbox                 # affiche ZERNIO_WHATSAPP_ACCOUNT_ID à copier dans .env
+uv run python whatsapp.py sandbox +33612345678    # active le téléphone de l'« artisan »
+```
+
+Le téléphone reçoit un message du bac à sable : il y répond. Puis dans `.env` : `ZERNIO_SANDBOX=1`, et
+le numéro de ce téléphone dans le contact « plombier » (`AIFRED_DEMO_JSON`, ou `demo.example.json` en
+local, puis supprime `data/aifred.db` pour recharger). La photo n'est jointe que si le serveur est en
+ligne : Zernio va la chercher à l'adresse `AIFRED_PUBLIC_URL`.
+
+## Le modèle WhatsApp, pour un vrai numéro (à faire approuver par Meta)
 
 Un artisan qui ne nous a jamais écrit ne peut recevoir qu'un modèle approuvé. Dans Zernio (ou le
 Gestionnaire WhatsApp de Meta), sur le numéro d'AIfred :

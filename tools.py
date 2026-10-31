@@ -193,7 +193,7 @@ async def confirmer_invitation(context: RunContext[Visio]) -> str:
     result = await whatsapp.send_invitation(contact["phone"], [first_name, invited_by, reason, link], image_url)
     if not result["ok"]:
         db.log(v.room.name, f"Échec de l'invitation à {contact['name']} : {result.get('error')}")
-        await v.card("error", text=f"WhatsApp n'est pas parti vers {contact['name']}.")
+        await v.card("error", text=f"WhatsApp n'est pas parti vers {contact['name']} : {str(result.get('error'))[:150]}")
         return "L'envoi WhatsApp a échoué. Dis-le simplement et propose de réessayer."
     trial = " (mode essai, rien n'est parti)" if result["dry_run"] else ""
     db.log(v.room.name, f"Invitation WhatsApp à {contact['name']} ({contact['trade']}) : {reason}{trial}")

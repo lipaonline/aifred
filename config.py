@@ -43,6 +43,8 @@ VOICE_ID = os.environ.get("AIFRED_VOICE_ID", "axlOaUiFyOZhy4nv")  # Leo, voix ma
 ZERNIO_API_KEY = os.environ.get("ZERNIO_API_KEY", "")
 ZERNIO_API_URL = os.environ.get("ZERNIO_API_URL", "https://zernio.com/api").rstrip("/")
 ZERNIO_WHATSAPP_ACCOUNT_ID = os.environ.get("ZERNIO_WHATSAPP_ACCOUNT_ID", "")
+# Bac à sable Zernio (numéro US gratuit de test) : message libre au lieu du modèle approuvé
+ZERNIO_SANDBOX = os.environ.get("ZERNIO_SANDBOX", "") in ("1", "true", "oui")
 WHATSAPP_TEMPLATE = os.environ.get("AIFRED_WHATSAPP_TEMPLATE", "aifred_visio")
 WHATSAPP_TEMPLATE_LANGUAGE = os.environ.get("AIFRED_WHATSAPP_TEMPLATE_LANGUAGE", "fr")
 
