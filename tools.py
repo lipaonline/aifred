@@ -15,6 +15,7 @@ Ici, preparer_rapport et preparer_invitation n'envoient rien. L'envoi part sur u
 qui a activé AIfred, vérifié dans le code, ou quand cette personne touche Envoyer sur la carte.
 """
 
+import asyncio
 import base64
 import json
 import re
@@ -37,6 +38,8 @@ YES_RE = re.compile(r"\b(oui|ouais|vas-y|vas y|ok|okay|d'accord|daccord|envoie|e
 NO_RE = re.compile(r"\b(non|attends|attend|annule|stop)\b")
 # Ce qui demande à AIfred de regarder : sans cela, ou sans « oui » à sa question, il ne prend pas de photo
 LOOK_RE = re.compile(r"\b(regard\w*|vois|voit|voir|voyez|lis|lire|lit|photo\w*|camera|image|ecran|montre\w*)\b")
+# Celui qui montre lui-même : c'est sa caméra qu'il faut regarder
+MY_CAMERA_RE = re.compile(r"\b(je (te |vous )?montre|ma camera|mon telephone)\b")
 PENDING_SECONDS = 120
 PHOTO_TOPIC = "aifred-photo"
 
@@ -55,6 +58,7 @@ class Visio:
     board_shown: bool = False               # le tableau de la journée est affiché
     noted: bool = False                     # l'intervention est déjà dans l'historique
     sujet: str = ""                         # le sujet de la visio, donné au lancement
+    opened_by: str = ""                     # le prénom de celui qui a ouvert la salle : il survit à un rechargement de page
     guest_room: str | None = None           # sur le canal : la visio préparée pour les invités
     anthropic_client: anthropic.AsyncAnthropic = field(default_factory=anthropic.AsyncAnthropic)
 
@@ -133,57 +137,61 @@ def _has_camera(p: rtc.RemoteParticipant) -> bool:
     return any(t.source == rtc.TrackSource.SOURCE_CAMERA and not t.muted for t in p.track_publications.values())
 
 
-def _on_site(context: RunContext[Visio], name: str = "") -> rtc.RemoteParticipant | None:
-    """La personne à regarder : celle qu'on nomme, sinon le dernier de l'équipe entré avec sa caméra.
-    Le gérant, à distance, ouvre la visio : ce n'est pas lui qui montre la panne."""
+async def _is_rear(v: Visio, p: rtc.RemoteParticipant) -> bool:
+    """Seule la page sait quelle caméra est active. Un ordinateur ne répond jamais « arrière »."""
+    try:
+        return await v.room.local_participant.perform_rpc(
+            destination_identity=p.identity, method="camera", payload="", response_timeout=2) == "environment"
+    except (rtc.RpcError, TimeoutError):
+        return False
+
+
+async def _on_site(context: RunContext[Visio], name: str = "") -> rtc.RemoteParticipant | None:
+    """La personne à regarder : celle qu'on nomme, celle qui dit montrer, sinon celle qui filme la panne.
+    Celle qui filme : la caméra arrière d'abord. Puis pas celle qui a ouvert la visio, souvent le gérant à
+    distance. Puis, dans l'équipe avant les invités, celle qui demande."""
     v = context.userdata
+    heard = db._plain(_last_user_text(context))
     wanted = db._plain(name)
-    if wanted:
+    # Un prénom compte s'il a été dit : Claude ne choisit pas la caméra à la place de l'équipe
+    if wanted and wanted in heard:
         for p in v.room.remote_participants.values():
             if wanted in db._plain(p.name or ""):
                 return p
-    team = [p for p in v.team() if _has_camera(p)]
-    if team:
-        return team[-1]
-    return next((p for p in v.room.remote_participants.values() if _has_camera(p)), None)
+    speaker = _speaker(context)
+    if speaker and MY_CAMERA_RE.search(heard):
+        return speaker
+    filming = [p for p in v.room.remote_participants.values() if _has_camera(p)]
+    if len(filming) < 2:
+        return filming[0] if filming else None
+    rear = await asyncio.gather(*(_is_rear(v, p) for p in filming))
+    pool = [p for p, is_rear in zip(filming, rear) if is_rear] or filming
+    pool = [p for p in pool if p.name != v.opened_by] or pool
+    team = [p for p in pool if p.attributes.get("role") == "equipe"]
+    return speaker if speaker in team else (team or pool)[-1]
 
 
-async def _take_photo(context: RunContext[Visio], name: str = "") -> tuple[bytes, str] | None:
-    v = context.userdata
-    on_site = _on_site(context, name)
-    if not on_site:
-        return None
-    await v.signal("regarde", who=on_site.identity)
-    jpeg = await v.cameras.capture(on_site.identity)
+async def shoot(v: Visio, person: rtc.RemoteParticipant) -> tuple[bytes, str] | None:
+    """Demande une image au téléphone de la personne, la garde et l'affiche à l'équipe."""
+    await v.signal("regarde", who=person.identity)
+    jpeg = await v.cameras.capture(person.identity)
     if not jpeg:
         return None
     PHOTOS.mkdir(parents=True, exist_ok=True)
     name = f"{secrets.token_hex(12)}.jpg"
     (PHOTOS / name).write_bytes(jpeg)
     v.last_photo = name
-    await v.card("photo", url=f"/photos/{name}")
+    await v.card("photo", url=f"/photos/{name}", who=person.name)
     return jpeg, name
 
 
-@function_tool
-async def regarder(context: RunContext[Visio], question: str, personne: str = "") -> str:
-    """Prend une photo avec la caméra de la personne sur place et répond à une question sur ce qu'on voit.
-    Seulement quand on te demande de regarder (« regarde ce message d'erreur », « tu vois la marque ? »).
-    Parler d'une panne n'est pas une demande de regarder. Garde aussi la photo, pour l'envoyer si on le demande.
+async def _take_photo(context: RunContext[Visio], name: str = "") -> tuple[bytes, str] | None:
+    on_site = await _on_site(context, name)
+    return await shoot(context.userdata, on_site) if on_site else None
 
-    Args:
-        question: ce qu'il faut regarder sur l'image, en français.
-        personne: le prénom de la personne à regarder, si on la nomme. Sinon, la personne sur place.
-    """
-    if context.userdata.is_canal:
-        return "Sur le canal, il n'y a pas de caméra. Dis qu'il faut passer en visio pour que tu puisses voir."
-    if not _asked_to_look(context):
-        return "Aucune photo n'est prise : personne n'a demandé de regarder. Demande d'abord : « Tu veux que je regarde ? Montre-moi l'endroit. »"
-    shot = await _take_photo(context, personne)
-    if not shot:
-        return "Aucune caméra n'est allumée. Demande à la personne sur place d'allumer sa caméra."
-    jpeg, _name = shot
-    response = await context.userdata.anthropic_client.messages.create(
+
+async def _describe(v: Visio, jpeg: bytes, question: str) -> str:
+    response = await v.anthropic_client.messages.create(
         model=config.LLM_MODEL,
         max_tokens=300,
         system=(
@@ -201,6 +209,36 @@ async def regarder(context: RunContext[Visio], question: str, personne: str = ""
         }],
     )
     return "".join(b.text for b in response.content if b.type == "text") or "Je n'arrive pas à lire l'image."
+
+
+async def what_i_see(v: Visio, jpeg: bytes) -> str:
+    """Le bouton Photo : personne n'a posé de question, AIfred dit ce qu'on lui montre."""
+    try:
+        return await _describe(v, jpeg, "Que montre cette photo ? Lis les messages d'erreur et les marques qu'on voit.")
+    except anthropic.APIError as e:
+        db.log(v.room.name, f"Photo non lue : {e}")
+        return "Je n'arrive pas à lire l'image."
+
+
+@function_tool
+async def regarder(context: RunContext[Visio], question: str, personne: str = "") -> str:
+    """Prend une photo avec la caméra de la personne sur place et répond à une question sur ce qu'on voit.
+    Seulement quand on te demande de regarder (« regarde ce message d'erreur », « tu vois la marque ? »).
+    Parler d'une panne n'est pas une demande de regarder. Garde aussi la photo, pour l'envoyer si on le demande.
+
+    Args:
+        question: ce qu'il faut regarder sur l'image, en français.
+        personne: le prénom de la personne à regarder, seulement si on la nomme dans la phrase. Sinon, laisse vide.
+    """
+    if context.userdata.is_canal:
+        return "Sur le canal, il n'y a pas de caméra. Dis qu'il faut passer en visio pour que tu puisses voir."
+    if not _asked_to_look(context):
+        return "Aucune photo n'est prise : personne n'a demandé de regarder. Demande d'abord : « Tu veux que je regarde ? Montre-moi l'endroit. »"
+    shot = await _take_photo(context, personne)
+    if not shot:
+        return "Aucune caméra n'est allumée. Demande à la personne sur place d'allumer sa caméra."
+    jpeg, _name = shot
+    return await _describe(context.userdata, jpeg, question)
 
 
 @function_tool

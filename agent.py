@@ -253,7 +253,7 @@ async def entrypoint(ctx: JobContext):
     first = await ctx.wait_for_participant()
     sujet = first.attributes.get("sujet", "")
     agent = Aifred(sujet)
-    userdata = tools.Visio(room=ctx.room, cameras=Cameras(ctx.room), sujet=sujet)
+    userdata = tools.Visio(room=ctx.room, cameras=Cameras(ctx.room), sujet=sujet, opened_by=first.name)
 
     session = AgentSession[tools.Visio](
         stt=ear(),
@@ -327,6 +327,28 @@ async def entrypoint(ctx: JobContext):
                                                 f"{phrase} Cet envoi est réglé : ne le repropose pas et ne demande plus de confirmation.)")
         await agent.update_chat_ctx(memory)
         session.say(phrase, add_to_chat_ctx=False)
+        return json.dumps({"ok": True})
+
+    async def _say_what_i_see(jpeg: bytes):
+        # Dans l'historique de la conversation : il s'en souvient, et la fiche le reprend
+        session.say(await tools.what_i_see(userdata, jpeg))
+
+    @ctx.room.local_participant.register_rpc_method("montrer")
+    async def _montrer(data: rtc.RpcInvocationData) -> str:
+        # Le bouton Photo : la personne choisit ce qu'elle montre, AIfred n'a aucune caméra à deviner
+        if salle.active == data.caller_identity:
+            return json.dumps({"ok": False, "raison": "Touche d'abord AIFRED pour finir ta phrase."}, ensure_ascii=False)
+        if salle.active:
+            return json.dumps({"ok": False, "raison": f"{salle._name(salle.active)} parle à AIfred, attends un instant."}, ensure_ascii=False)
+        caller = ctx.room.remote_participants.get(data.caller_identity)
+        shot = await tools.shoot(userdata, caller) if caller else None
+        if not shot:
+            return json.dumps({"ok": False, "raison": "Pas d'image : vérifie que ta caméra est allumée."}, ensure_ascii=False)
+        # Comme à une question : c'est à elle qu'il répond, et elle seule peut le couper
+        salle.last_asker = data.caller_identity
+        salle.publish()
+        session.say("Je regarde.", add_to_chat_ctx=False)
+        _run(_say_what_i_see(shot[0]))
         return json.dumps({"ok": True})
 
     @ctx.room.local_participant.register_rpc_method("lancer_visio")

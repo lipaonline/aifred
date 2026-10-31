@@ -125,7 +125,10 @@
 
   /* La visio */
   .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
-  .mains { flex: 1; min-height: 0; display: flex; }
+  .mains { position: relative; flex: 1; min-height: 0; display: flex; }
+  .shot { position: absolute; right: 8px; bottom: 8px; z-index: 2; height: 44px; padding: 0 14px; border-radius: 99px; background: var(--graphite); color: var(--on-graphite); display: flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; }
+  .shot svg { width: 18px; height: 18px; }
+  .shot:disabled { opacity: .6; }
   .minis { flex: none; height: 92px; display: flex; gap: 8px; overflow-x: auto; }
   .minis .tile { flex: 1 0 96px; max-width: 240px; }
   .tile { position: relative; flex: 1; min-width: 0; border-radius: 16px; overflow: hidden; background: var(--line-soft); display: grid; place-items: center; }
@@ -278,7 +281,9 @@
 
     <!-- Visio -->
     <div class="stage" id="stage" hidden>
-      <div class="mains" id="mains"></div>
+      <div class="mains" id="mains">
+        <button class="shot" id="shot" hidden aria-label="Prendre une photo et la montrer à AIfred"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></svg>Photo</button>
+      </div>
       <div class="minis" id="minis"></div>
     </div>
     <div class="vcards" id="visio-feed" hidden></div>
@@ -541,6 +546,11 @@ async function connect({ token, url }, newMode) {
       { topic: 'aifred-photo', destinationIdentities: [data.callerIdentity] });
     return 'ok';
   });
+  // Quelle caméra est active : la caméra arrière est celle qui montre la panne
+  room.registerRpcMethod('camera', async () => {
+    const pub = room.localParticipant.getTrackPublication(LK.Track.Source.Camera);
+    return pub?.videoTrack?.mediaStreamTrack?.getSettings().facingMode || '';
+  });
 
   await room.connect(url, token);
   await room.startAudio();
@@ -768,6 +778,7 @@ function renderTiles() {
   }
   $('#mic').classList.toggle('off', !lp.isMicrophoneEnabled);
   $('#cam').classList.toggle('off', !lp.isCameraEnabled);
+  $('#shot').hidden = !lp.isCameraEnabled;
 }
 
 async function grabPhoto() {
@@ -790,6 +801,14 @@ $('#flip').onclick = async () => {
   const pub = room.localParticipant.getTrackPublication(LK.Track.Source.Camera);
   if (pub?.videoTrack) await pub.videoTrack.restartTrack({ facingMode: facing });
   render();
+};
+$('#shot').onclick = async () => {
+  $('#shot').disabled = true;
+  const r = await rpc('montrer');
+  $('#shot').disabled = false;
+  if (!r.ok) toast(r.raison || 'La photo ne part pas. Réessaie.');
+  // L'invité ne reçoit pas les cartes de l'équipe
+  else if (!isTeam()) toast('Photo envoyée à AIfred.');
 };
 $('#unmute').onclick = () => room.startAudio();
 
@@ -1005,7 +1024,7 @@ function addCard(c) {
   const el = document.createElement('div');
   const img = (src) => src ? `<img src="${esc(src)}" alt="">` : '';
   const close = '<button class="close" aria-label="Fermer">✕</button>';
-  if (c.type === 'photo') { el.className = 'card'; el.innerHTML = `${close}<strong>Photo prise</strong>${img(c.url)}`; }
+  if (c.type === 'photo') { el.className = 'card'; el.innerHTML = `${close}<strong>${c.who ? `Caméra de ${esc(c.who)}` : 'Photo prise'}</strong>${img(c.url)}`; }
   else if (c.type === 'fiche') { el.className = 'card'; el.innerHTML = `${close}<strong>${esc(c.title)}</strong>${esc(c.text)}`; }
   else if (c.type === 'sent') {
     el.className = 'card sent';

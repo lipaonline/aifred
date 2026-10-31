@@ -25,6 +25,7 @@ AIfred voit aussi par la caméra (`regarder`) : c'est un sens, comme la voix.
 - **Le sélecteur Talkie | Visio.** Talkie : toute l'équipe sur le même canal, sans caméra. Visio : on se voit, avec les personnes qu'on invite. Dans les deux, tout le monde parle librement.
 - **Le bouton Équipe** : un toucher coupe ou rouvre son micro, quand c'est bruyant.
 - **Le bouton AIfred** : un clic pour lui parler, un second clic quand on a fini, et c'est à ce moment qu'il répond. On peut donc faire une pause. L'équipe et les invités l'ont tous. Il n'écoute que la personne qui a cliqué, et tout le monde entend la question et la réponse. Pendant sa réponse, la même personne peut le couper d'un clic. Si on oublie le second clic, il se coupe seul après 30 s de silence.
+- **Le bouton Photo**, en visio : un toucher prend une photo avec sa propre caméra, l'affiche à l'équipe, et AIfred dit ce qu'il voit. À la voix (« Regarde le message d'erreur »), AIfred choisit la caméra : celle qu'on nomme, sinon la caméra arrière, sinon pas celle de la personne qui a ouvert la visio.
 - **La carte à valider** : Envoyer, Annuler, ou un clic sur AIfred pour lui dire « oui ».
 - **La fiche d'intervention** : à la fin d'une visio, AIfred la rédige à partir de ce qu'il a entendu. Rien n'est enregistré avant « Valider ».
 
@@ -63,7 +64,8 @@ Le canal dédié pour parler à AIfred en privé est une évolution prévue, pas
   - un envoi ne part qu'après un « oui » de la personne qui a demandé l'envoi, vérifié dans le code
     (`confirmer_envoi`), ou quand cette personne touche Envoyer ;
   - un artisan ou un propriétaire peut parler à AIfred, mais son « oui » ne fait rien partir ;
-  - AIfred ne prend une photo que si on lui demande de regarder, vérifié dans le code (`regarder`) ;
+  - AIfred ne prend une photo que si on lui demande de regarder, vérifié dans le code (`regarder`), ou si la
+    personne touche le bouton Photo de sa visio : c'est alors sa propre caméra ;
   - AIfred se présente comme une IA à chaque invité ;
   - il ne lit jamais un numéro à voix haute.
 
