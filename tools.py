@@ -35,6 +35,8 @@ import whatsapp
 PHOTOS = config.DATA_DIR / "photos"
 YES_RE = re.compile(r"\b(oui|ouais|vas-y|vas y|ok|okay|d'accord|daccord|envoie|envoie-le|confirme|go)\b")
 NO_RE = re.compile(r"\b(non|attends|attend|annule|stop)\b")
+# Ce qui demande à AIfred de regarder : sans cela, ou sans « oui » à sa question, il ne prend pas de photo
+LOOK_RE = re.compile(r"\b(regard\w*|vois|voit|voir|voyez|lis|lire|lit|photo\w*|camera|image|ecran|montre\w*)\b")
 PENDING_SECONDS = 120
 PHOTO_TOPIC = "aifred-photo"
 
@@ -112,6 +114,21 @@ def _last_user_text(context: RunContext[Visio]) -> str:
     return (turn.text_content or "").split(" : ", 1)[-1] if turn else ""
 
 
+def _last_assistant_text(context: RunContext[Visio]) -> str:
+    for item in reversed(context.session.history.items):
+        if getattr(item, "role", None) == "assistant" and item.text_content:
+            return item.text_content
+    return ""
+
+
+def _asked_to_look(context: RunContext[Visio]) -> bool:
+    """On lui a demandé de regarder, ou on vient de répondre oui à sa question."""
+    heard = db._plain(_last_user_text(context))
+    if LOOK_RE.search(heard):
+        return True
+    return bool(YES_RE.search(heard)) and not NO_RE.search(heard) and bool(LOOK_RE.search(db._plain(_last_assistant_text(context))))
+
+
 def _has_camera(p: rtc.RemoteParticipant) -> bool:
     return any(t.source == rtc.TrackSource.SOURCE_CAMERA and not t.muted for t in p.track_publications.values())
 
@@ -150,9 +167,9 @@ async def _take_photo(context: RunContext[Visio], name: str = "") -> tuple[bytes
 
 @function_tool
 async def regarder(context: RunContext[Visio], question: str, personne: str = "") -> str:
-    """Regarde l'image de la caméra de la personne sur place et répond à une question sur ce qu'on voit
-    (« c'est quelle marque, ce mitigeur ? », « c'est quoi ce message d'erreur ? »). Garde aussi la photo,
-    pour l'envoyer si on le demande.
+    """Prend une photo avec la caméra de la personne sur place et répond à une question sur ce qu'on voit.
+    Seulement quand on te demande de regarder (« regarde ce message d'erreur », « tu vois la marque ? »).
+    Parler d'une panne n'est pas une demande de regarder. Garde aussi la photo, pour l'envoyer si on le demande.
 
     Args:
         question: ce qu'il faut regarder sur l'image, en français.
@@ -160,6 +177,8 @@ async def regarder(context: RunContext[Visio], question: str, personne: str = ""
     """
     if context.userdata.is_canal:
         return "Sur le canal, il n'y a pas de caméra. Dis qu'il faut passer en visio pour que tu puisses voir."
+    if not _asked_to_look(context):
+        return "Aucune photo n'est prise : personne n'a demandé de regarder. Demande d'abord : « Tu veux que je regarde ? Montre-moi l'endroit. »"
     shot = await _take_photo(context, personne)
     if not shot:
         return "Aucune caméra n'est allumée. Demande à la personne sur place d'allumer sa caméra."
@@ -358,6 +377,8 @@ async def preparer_invitation(context: RunContext[Visio], qui: str, motif: str, 
         names = ", ".join(f"{c['name']} ({c['trade']})" for c in found)
         return f"Plusieurs personnes correspondent : {names}. Demande laquelle."
     contact = found[0]
+    # La photo seulement si on la demande, même si Claude la propose de lui-même
+    avec_photo = avec_photo and "photo" in db._plain(_last_user_text(context))
     if avec_photo and not v.last_photo:
         await _take_photo(context)
     photo = v.last_photo if avec_photo else None

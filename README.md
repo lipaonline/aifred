@@ -63,6 +63,7 @@ Le canal dédié pour parler à AIfred en privé est une évolution prévue, pas
   - un envoi ne part qu'après un « oui » de la personne qui a demandé l'envoi, vérifié dans le code
     (`confirmer_envoi`), ou quand cette personne touche Envoyer ;
   - un artisan ou un propriétaire peut parler à AIfred, mais son « oui » ne fait rien partir ;
+  - AIfred ne prend une photo que si on lui demande de regarder, vérifié dans le code (`regarder`) ;
   - AIfred se présente comme une IA à chaque invité ;
   - il ne lit jamais un numéro à voix haute.
 

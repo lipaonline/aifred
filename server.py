@@ -151,6 +151,13 @@ def team_contacts(body: TeamCode):
     return {"contacts": [{"id": c["id"], "name": c["name"], "trade": c["trade"]} for c in db.contacts()]}
 
 
+@app.post("/api/team/houses")
+def team_houses(body: TeamCode):
+    if not _team_allowed(body.code):
+        raise HTTPException(403, "Code d'équipe incorrect")
+    return {"houses": [h["name"] for h in db.houses()]}
+
+
 class Fiche(TeamCode):
     maison: str = ""
     equipement: str = ""
@@ -168,7 +175,7 @@ def save_report(body: Fiche):
         raise HTTPException(403, "Code d'équipe incorrect")
     found = db.find_houses(body.maison)
     if not found:
-        raise HTTPException(400, f"Je ne connais pas la maison « {body.maison} »")
+        raise HTTPException(400, "Choisis la maison avant de valider.")
     house = found[0]["name"]
     problem = " ; ".join(t for t in (body.panne.strip(), body.diagnostic.strip()) if t)[:300]
     with db.connect() as conn:

@@ -191,6 +191,9 @@
   .fr > span { font-family: var(--f-mono); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); }
   .fr input { width: 100%; border: 0; background: transparent; color: var(--ink); font: inherit; padding: 2px 0; }
   .fr input:not([readonly]) { border-bottom: 1.5px solid var(--steel); }
+  .fr select { width: 100%; border: 0; background: transparent; color: var(--ink); font: inherit; padding: 2px 0; }
+  .fr select:disabled { opacity: 1; appearance: none; -webkit-appearance: none; }
+  .fr select:not(:disabled) { border-bottom: 1.5px solid var(--steel); }
   .fr img { height: 64px; border-radius: 8px; }
   .hint { text-align: center; font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-2); letter-spacing: .04em; }
 
@@ -292,7 +295,7 @@
     <div class="fiche-screen" id="fiche-screen" hidden>
       <div class="fiche">
         <h4 id="fiche-title">Fiche d'intervention</h4>
-        <label class="fr"><span>Maison</span><input data-fiche="maison" readonly></label>
+        <label class="fr"><span>Maison</span><select data-fiche="maison" id="fiche-maison" disabled><option value="">Choisir la maison</option></select></label>
         <label class="fr"><span>Équipement</span><input data-fiche="equipement" readonly></label>
         <label class="fr"><span>Panne</span><input data-fiche="panne" readonly></label>
         <div class="fr" id="fiche-photo-row" hidden><span>Photo</span><img id="fiche-photo" alt="La photo prise pendant la visio"></div>
@@ -860,21 +863,47 @@ async function backToCanal() {
 // ---------- La fiche d'intervention ----------
 
 let ficheData = null;
-function showFiche(fiche) {
+
+async function fillHouses(wanted) {
+  const list = $('#fiche-maison');
+  let names = [];
+  try {
+    const r = await fetch('/api/team/houses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: store.get('aifred-code') }) });
+    if (r.ok) names = (await r.json()).houses;
+  } catch {}
+  list.replaceChildren(new Option('Choisir la maison', ''), ...names.map((n) => new Option(n)));
+  // AIfred peut dire « l'appartement REF415 » : on retrouve la maison dans sa phrase
+  const said = (wanted || '').trim().toLowerCase();
+  list.value = (said && names.find((n) => said.includes(n.toLowerCase()) || n.toLowerCase().includes(said))) || '';
+}
+
+async function showFiche(fiche) {
   ficheData = fiche;
   for (const id of ['#canal-feed', '#status', '#pads', '#stage', '#vbar', '#seg', '#rec', '#caption', '#confirm', '#visio-feed']) $(id).hidden = true;
   $('#head-kicker').firstChild.textContent = 'Visio terminée';
   $('#head-title').textContent = fiche.maison || '';
   $('#fiche-screen').hidden = false;
-  $('#fiche-title').textContent = `Fiche d'intervention${fiche.maison ? ' · ' + fiche.maison : ''}`;
-  document.querySelectorAll('[data-fiche]').forEach((input) => { input.value = fiche[input.dataset.fiche] || ''; input.readOnly = true; });
+  $('#fiche-title').textContent = "Fiche d'intervention";
+  document.querySelectorAll('input[data-fiche]').forEach((input) => { input.value = fiche[input.dataset.fiche] || ''; input.readOnly = true; });
   $('#fiche-photo-row').hidden = !fiche.photo;
   if (fiche.photo) $('#fiche-photo').src = fiche.photo;
   $('#fiche-error').textContent = '';
+  await fillHouses(fiche.maison);
+  // AIfred n'a pas su laquelle : c'est le seul champ à remplir pour valider
+  $('#fiche-maison').disabled = !!$('#fiche-maison').value;
 }
-$('#fiche-edit').onclick = () => { document.querySelectorAll('[data-fiche]').forEach((input) => { input.readOnly = false; }); document.querySelector('[data-fiche]').focus(); };
+$('#fiche-edit').onclick = () => {
+  document.querySelectorAll('input[data-fiche]').forEach((input) => { input.readOnly = false; });
+  $('#fiche-maison').disabled = false;
+  $('#fiche-maison').focus();
+};
 $('#fiche-skip').onclick = backToCanal;
 $('#fiche-ok').onclick = async () => {
+  if (!$('#fiche-maison').value) {
+    $('#fiche-error').textContent = 'Choisis la maison avant de valider.';
+    $('#fiche-maison').focus();
+    return;
+  }
   const body = { code: store.get('aifred-code'), code_erreur: ficheData?.code || '' };
   document.querySelectorAll('[data-fiche]').forEach((input) => { body[input.dataset.fiche] = input.value; });
   const r = await fetch('/api/fiche', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
