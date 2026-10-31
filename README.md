@@ -97,8 +97,8 @@ Mise en place, une seule fois :
    `BUNNYNET_API_KEY`, pour que les push sur `main` déploient.
 8. Donne à l'équipe le lien `https://aifred.byfloo.com/?equipe=<code>` : le code reste dans le téléphone.
 
-À vérifier au premier déploiement : que l'agent rejoint bien la salle depuis Bunny (il sort vers LiveKit
-Cloud en UDP, ou en TCP si l'UDP est bloqué).
+Testé le 31 octobre 2026 : depuis Bunny (région Paris), l'agent rejoint la salle, écoute, cherche dans les
+fiches et répond à voix haute. Pas encore essayé depuis un vrai téléphone, ni avec la caméra.
 
 ## WhatsApp pour la démo : le bac à sable Zernio
 
@@ -157,3 +157,5 @@ Puis `ZERNIO_API_KEY` et `ZERNIO_WHATSAPP_ACCOUNT_ID` dans les variables.
   participant (et accepter le « oui » de n'importe quel membre de l'équipe) viendra ensuite.
 - La reconnaissance vocale tourne tant que la visio est ouverte : à surveiller sur les crédits Gradium.
 - Pas encore de réponse aux messages WhatsApp entrants.
+- AIfred met environ 6 s à répondre après la fin d'une phrase, en local comme en ligne : à réduire avant la
+  démo.
