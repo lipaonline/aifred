@@ -61,6 +61,7 @@
   .p-camp { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); min-width: 0; }
   .p-camp b { display: block; color: var(--ink); font-family: var(--f-display); font-size: 16px; letter-spacing: 0; text-transform: none; font-stretch: 105%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .head-right { display: flex; align-items: center; gap: 8px; flex: none; }
+  .quit { height: 34px; padding: 0 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; font-size: 12px; font-weight: 600; }
   .who { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px 3px 3px; font-size: 12px; font-weight: 600; }
   .av { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; background: var(--line); color: var(--ink); flex: none; }
   .round { width: 34px; height: 34px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; }
@@ -263,6 +264,7 @@
         <span class="rec" id="rec" hidden></span>
         <button class="round" id="board-toggle" aria-label="Afficher le tableau de la journée" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></button>
         <span class="who"><span class="av" id="who-av"></span><span id="who-name"></span></span>
+        <button class="quit" id="quit">Quitter</button>
       </div>
     </header>
 
@@ -647,6 +649,7 @@ function setMode() {
   $('#head-kicker').firstChild.textContent = visio ? 'Visio · ' : 'Canal · Équipe';
   $('#head-title').textContent = visio ? (sujet || 'Intervention') : 'La conciergerie';
   $('#rec').hidden = !visio;
+  $('#quit').hidden = visio;   // en visio, c'est le bouton rouge
 }
 
 function render() {
@@ -817,6 +820,8 @@ $('#unmute').onclick = () => room.startAudio();
 $('#seg-v').onclick = () => { if (mode === 'canal') openSheet(); };
 $('#seg-t').onclick = () => { if (mode === 'visio') hangUp(); };
 $('#leave').onclick = hangUp;
+// À la déconnexion, la page se recharge : retour à l'accueil
+$('#quit').onclick = () => room.disconnect();
 
 async function openSheet() {
   $('#dim').hidden = $('#sheet').hidden = false;

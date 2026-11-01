@@ -26,6 +26,7 @@ AIfred voit aussi par la caméra (`regarder`) : c'est un sens, comme la voix.
 - **Le bouton Équipe** : un toucher coupe ou rouvre son micro, quand c'est bruyant.
 - **Le bouton AIfred** : un clic pour lui parler, un second clic quand on a fini, et c'est à ce moment qu'il répond. On peut donc faire une pause. L'équipe et les invités l'ont tous. Il n'écoute que la personne qui a cliqué, et tout le monde entend la question et la réponse. Pendant sa réponse, la même personne peut le couper d'un clic. Si on oublie le second clic, il se coupe seul après 30 s de silence.
 - **Le bouton Photo**, en visio : un toucher prend une photo avec sa propre caméra, l'affiche à l'équipe, et AIfred dit ce qu'il voit. À la voix (« Regarde le message d'erreur »), AIfred choisit la caméra : celle qu'on nomme, sinon la caméra arrière, sinon pas celle de la personne qui a ouvert la visio.
+- **Finir** : sur Talkie, le bouton Quitter revient à l'accueil. En visio, le bouton rouge raccroche et propose la fiche.
 - **La carte à valider** : Envoyer, Annuler, ou un clic sur AIfred pour lui dire « oui ».
 - **La fiche d'intervention** : à la fin d'une visio, AIfred la rédige à partir de ce qu'il a entendu. Rien n'est enregistré avant « Valider ».
 

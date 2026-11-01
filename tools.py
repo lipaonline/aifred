@@ -214,7 +214,7 @@ async def _describe(v: Visio, jpeg: bytes, question: str) -> str:
 async def what_i_see(v: Visio, jpeg: bytes) -> str:
     """Le bouton Photo : personne n'a posé de question, AIfred dit ce qu'on lui montre."""
     try:
-        return await _describe(v, jpeg, "Que montre cette photo ? Lis les messages d'erreur et les marques qu'on voit.")
+        return await _describe(v, jpeg, "En une seule phrase courte qui commence par « Je vois » : le message d'erreur et la marque s'ils sont lisibles. Sinon, dis ce que tu vois et demande de mieux cadrer.")
     except anthropic.APIError as e:
         db.log(v.room.name, f"Photo non lue : {e}")
         return "Je n'arrive pas à lire l'image."
