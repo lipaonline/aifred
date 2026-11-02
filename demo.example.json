@@ -4,49 +4,57 @@
       "name": "Marc Dubois",
       "trade": "plombier",
       "role": "artisan",
-      "phone": "+33600000001"
+      "phone": "+33600000001",
+      "telegram": "1000000001"
     },
     {
       "name": "Karim Benali",
       "trade": "électricien",
       "role": "artisan",
-      "phone": "+33600000002"
+      "phone": "+33600000002",
+      "telegram": "1000000002"
     },
     {
       "name": "Julien Morel",
       "trade": "serrurier",
       "role": "artisan",
-      "phone": "+33600000003"
+      "phone": "+33600000003",
+      "telegram": "1000000003"
     },
     {
       "name": "James Whitmore",
       "trade": "propriétaire du Chalet Les Mélèzes",
       "role": "proprietaire",
-      "phone": "+447700900001"
+      "phone": "+447700900001",
+      "telegram": "1000000004"
     },
     {
       "name": "Hélène Garnier",
       "trade": "propriétaire de la Villa Les Oyats",
       "role": "proprietaire",
-      "phone": "+33600000004"
+      "phone": "+33600000004",
+      "telegram": "1000000005"
     },
     {
       "name": "Sébastien",
       "trade": "employé, mise en place des appartements",
       "role": "equipe",
-      "phone": "+33600000005"
+      "phone": "+33600000005",
+      "telegram": "1000000006"
     },
     {
       "name": "Patrice",
       "trade": "chauffagiste",
       "role": "artisan",
-      "phone": "+33600000006"
+      "phone": "+33600000006",
+      "telegram": "1000000007"
     },
     {
       "name": "Claire Roussel",
       "trade": "propriétaire de REF415",
       "role": "proprietaire",
-      "phone": "+33600000007"
+      "phone": "+33600000007",
+      "telegram": "1000000008"
     }
   ],
   "houses": [

@@ -238,7 +238,7 @@
   <p class="error" id="team-error"></p>
 </section>
 
-<!-- Accueil d'un invité (lien reçu par WhatsApp) -->
+<!-- Accueil d'un invité (lien reçu par Telegram) -->
 <section class="welcome" id="guest-home" hidden>
   <div class="brand">A<b>I</b>fred</div>
   <h1 id="guest-title" style="font-family: var(--f-display); font-size: 22px; font-stretch: 108%;"></h1>
@@ -985,7 +985,7 @@ function showConfirm(c) {
   pending = c;
   const asker = c.by === me() || !c.by;
   $('#confirm-title').textContent = asker ? 'À valider par toi' : `En attente du oui de ${c.by_name}`;
-  $('#confirm-tag').textContent = c.type === 'pending' ? 'WhatsApp' : 'Email';
+  $('#confirm-tag').textContent = c.type === 'pending' ? 'Telegram' : 'Email';
   $('#confirm-what').textContent = c.type === 'pending' ? `À ${c.name}, ${c.trade}` : 'Le rapport de la journée';
   $('#confirm-text').textContent = c.type === 'pending'
     ? `« Bonjour, ${c.by_name || "l'équipe"} vous demande de rejoindre une visio pour : ${c.reason}. » Le message dit qu'il vient d'un assistant IA.`
