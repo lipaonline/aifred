@@ -172,6 +172,7 @@ Puis `ZERNIO_API_KEY` et `ZERNIO_WHATSAPP_ACCOUNT_ID` dans les variables.
 | `whatsapp.py` | envoi du modèle WhatsApp par Zernio |
 | `mailer.py` | le rapport de la journée par email, avec Postmark |
 | `web/index.html` | la page du téléphone (équipe et invités) |
+| `tests/` | les garde-fous et le carnet, testés sans clé ni réseau : `python -m unittest discover -s tests -t .` |
 | `Dockerfile`, `start.sh` | l'image pour Bunny |
 | `.github/workflows/deploy.yml` | construit l'image, et la met en ligne depuis `main` |
 

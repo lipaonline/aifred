@@ -35,7 +35,11 @@ import whatsapp
 
 PHOTOS = config.DATA_DIR / "photos"
 YES_RE = re.compile(r"\b(oui|ouais|vas-y|vas y|ok|okay|d'accord|daccord|envoie|envoie-le|confirme|go)\b")
-NO_RE = re.compile(r"\b(non|attends|attend|annule|stop)\b")
+NO_RE = re.compile(r"\b(non|attends|attend|attendez|annule\w*|stop|arrete\w*|surtout pas|plus tard|laisse tomber)\b")
+# Une négation retourne le oui : « n'envoie pas », « pas d'accord », « ce n'est pas ok », « jamais »
+NEGATION_RE = re.compile(r"\b(n'|ne |pas\b|jamais\b)")
+# Des tournures qui contiennent « pas » mais restent un oui
+NOT_A_NEGATION_RE = re.compile(r"\bpas de (souci|soucis|probleme|problemes)\b")
 # Ce qui demande à AIfred de regarder : sans cela, ou sans « oui » à sa question, il ne prend pas de photo
 LOOK_RE = re.compile(r"\b(regard\w*|vois|voit|voir|voyez|lis|lire|lit|photo\w*|camera|image|ecran|montre\w*)\b")
 # Celui qui montre lui-même : c'est sa caméra qu'il faut regarder
@@ -125,12 +129,20 @@ def _last_assistant_text(context: RunContext[Visio]) -> str:
     return ""
 
 
+def is_clear_yes(text: str) -> bool:
+    """Un oui clair : un mot d'accord, sans refus ni négation. Dans le doute, ce n'est pas un oui.
+    « N'envoie pas », « pas d'accord » ou « oui mais attends » ne font rien partir."""
+    heard = db._plain(text).replace("’", "'")
+    heard = NOT_A_NEGATION_RE.sub(" ", heard)
+    return bool(YES_RE.search(heard)) and not NO_RE.search(heard) and not NEGATION_RE.search(heard)
+
+
 def _asked_to_look(context: RunContext[Visio]) -> bool:
     """On lui a demandé de regarder, ou on vient de répondre oui à sa question."""
     heard = db._plain(_last_user_text(context))
     if LOOK_RE.search(heard):
         return True
-    return bool(YES_RE.search(heard)) and not NO_RE.search(heard) and bool(LOOK_RE.search(db._plain(_last_assistant_text(context))))
+    return is_clear_yes(heard) and bool(LOOK_RE.search(db._plain(_last_assistant_text(context))))
 
 
 def _has_camera(p: rtc.RemoteParticipant) -> bool:
@@ -439,8 +451,11 @@ async def confirmer_envoi(context: RunContext[Visio]) -> str:
     speaker = _team_asker(context)
     if not speaker:
         return "Seul un membre de l'équipe peut confirmer un envoi. Dis-le simplement."
-    heard = db._plain(_last_user_text(context))
-    if not YES_RE.search(heard) or NO_RE.search(heard):
+    # Comme le bouton Envoyer (agent.py, valider) : seule la personne qui a demandé l'envoi le confirme
+    pending = v.pending
+    if pending and pending.get("by") not in ("", speaker.identity):
+        return "Seule la personne qui a demandé l'envoi peut le confirmer. Demande-lui son accord."
+    if not is_clear_yes(_last_user_text(context)):
         return "Je n'ai pas entendu de oui clair. Repose la question et attends la réponse."
     return await send_pending(v, speaker.name or "L'équipe")
 
