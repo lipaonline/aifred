@@ -1047,6 +1047,11 @@ function addCard(c) {
   } else if (c.type === 'note') {
     el.className = 'card sent';
     el.innerHTML = `${close}<strong>Intervention notée · ${esc(c.title)}</strong>${esc(c.text)}`;
+  } else if (c.type === 'incident') {
+    el.className = c.urgency === 'haute' ? 'card error' : 'card';
+    el.innerHTML = `${close}<strong>Incident · ${esc(c.title)}</strong>${esc(c.problem)}`
+      + `<br><small>Urgence ${esc(c.urgency)}${c.arrival ? ` · arrivée ${esc(c.arrival)}` : ''}</small>`
+      + (c.artisan ? `<br><small>À proposer : ${esc(c.artisan)}</small>` : '');
   } else if (c.type === 'vol') {
     el.className = 'card';
     el.innerHTML = `${close}<strong>Vol ${esc(c.flight)} · ${esc(c.guest)}</strong>${esc(c.status)}`;

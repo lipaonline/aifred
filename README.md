@@ -15,7 +15,7 @@ fictives.
 | | Fonctionnalité | État |
 | --- | --- | --- |
 | 1 | **Préparer la journée** : AIfred résume les arrivées et les départs, affiche le tableau du jour, et après le « oui » envoie le rapport par email | fait ; email en mode essai sans clé Postmark |
-| 2 | **Le carnet des maisons** : fiches, historique des interventions, procédures, tarifs, questions fréquentes, vol du voyageur ; il met le tableau à jour et note chaque intervention | fait ; le statut du vol est simulé |
+| 2 | **Le carnet des maisons** : fiches, historique des interventions, procédures, tarifs, questions fréquentes, vol du voyageur ; il met le tableau à jour, note chaque intervention et crée la fiche d'un incident déclaré à la voix (urgence, prochaine arrivée, artisan à proposer) | fait ; le statut du vol est simulé |
 | 3 | **Faire venir en visio** : AIfred trouve la personne, demande « j'envoie ? », et après le « oui » envoie un WhatsApp avec le lien et, si on le demande, la photo | fait ; un seul téléphone avec le bac à sable Zernio |
 
 AIfred voit aussi par la caméra (`regarder`) : c'est un sens, comme la voix.
@@ -172,7 +172,7 @@ Puis `ZERNIO_API_KEY` et `ZERNIO_WHATSAPP_ACCOUNT_ID` dans les variables.
 | `whatsapp.py` | envoi du modèle WhatsApp par Zernio |
 | `mailer.py` | le rapport de la journée par email, avec Postmark |
 | `web/index.html` | la page du téléphone (équipe et invités) |
-| `tests/` | les garde-fous et le carnet, testés sans clé ni réseau : `python -m unittest discover -s tests -t .` |
+| `tests/` | les garde-fous, le carnet et les incidents, testés sans clé ni réseau : `python -m unittest discover -s tests -t .` |
 | `Dockerfile`, `start.sh` | l'image pour Bunny |
 | `.github/workflows/deploy.yml` | construit l'image, et la met en ligne depuis `main` |
 
