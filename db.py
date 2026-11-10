@@ -69,6 +69,17 @@ CREATE TABLE IF NOT EXISTS knowledge (
     topic TEXT NOT NULL,           -- procédure, tarif, question fréquente
     text TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS incidents (
+    id INTEGER PRIMARY KEY,
+    at REAL NOT NULL,
+    house TEXT NOT NULL,
+    problem TEXT NOT NULL,
+    urgency TEXT NOT NULL,         -- basse | normale | haute
+    next_arrival TEXT,             -- « aujourd'hui à 11:00 », si le tableau la connaît
+    artisan TEXT,                  -- le nom proposé, jamais contacté sans le oui de l'équipe
+    reported_by TEXT NOT NULL,
+    status TEXT NOT NULL           -- ouvert | réglé
+);
 CREATE TABLE IF NOT EXISTS log (
     id INTEGER PRIMARY KEY,
     at REAL NOT NULL,
@@ -189,6 +200,29 @@ def add_intervention(db, at: str, house: str, equipment: str, code: str, problem
 def interventions() -> list[dict]:
     with connect() as db:
         return [dict(r) for r in db.execute("SELECT * FROM interventions ORDER BY at DESC")]
+
+
+def next_arrival(house: str) -> str | None:
+    """La prochaine arrivée dans la maison : la démo ne connaît que celles du jour."""
+    with connect() as db:
+        row = db.execute("SELECT at FROM stays WHERE house = ? AND kind = 'arrivee' ORDER BY at", (house,)).fetchone()
+    return f"aujourd'hui à {row['at']}" if row else None
+
+
+def add_incident(house: str, problem: str, urgency: str, next_arrival: str | None, artisan: str | None,
+                 reported_by: str) -> int:
+    with connect() as db:
+        cur = db.execute(
+            "INSERT INTO incidents (at, house, problem, urgency, next_arrival, artisan, reported_by, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 'ouvert')",
+            (time.time(), house, problem, urgency, next_arrival, artisan, reported_by),
+        )
+        return cur.lastrowid
+
+
+def incidents() -> list[dict]:
+    with connect() as db:
+        return [dict(r) for r in db.execute("SELECT * FROM incidents ORDER BY at DESC")]
 
 
 def search_knowledge(text: str) -> list[dict]:

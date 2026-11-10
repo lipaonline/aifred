@@ -4,7 +4,7 @@ Les outils d'AIfred : ce qu'il peut faire quand on lui parle. Le prompt est dans
 Les 3 fonctionnalités :
 1. Préparer la journée : ma_journee, preparer_rapport.
 2. Le carnet des maisons : chercher_dans_la_maison, chercher_interventions, verifier_vol,
-   changer_statut, noter_intervention.
+   changer_statut, noter_intervention, declarer_incident.
 3. Faire venir en visio : preparer_invitation.
 
 regarder est un sens, comme la voix. confirmer_envoi et annuler_envoi servent aux envois des
@@ -44,6 +44,14 @@ NOT_A_NEGATION_RE = re.compile(r"\bpas de (souci|soucis|probleme|problemes)\b")
 LOOK_RE = re.compile(r"\b(regard\w*|vois|voit|voir|voyez|lis|lire|lit|photo\w*|camera|image|ecran|montre\w*)\b")
 # Celui qui montre lui-même : c'est sa caméra qu'il faut regarder
 MY_CAMERA_RE = re.compile(r"\b(je (te |vous )?montre|ma camera|mon telephone)\b")
+# Le métier qui répare, d'après les mots du problème : sert à proposer un artisan, jamais à le contacter
+TRADES = [
+    ("plombier", re.compile(r"\b(fuite\w*|eau|robinet\w*|mitigeur\w*|douche\w*|wc|toilettes?|evier|lavabo|canalisation\w*|bouche\w*|chauffe-eau|ballon)\b")),
+    ("chauffagiste", re.compile(r"\b(chauffage|chauffe pas|radiateur\w*|chaudiere|pompe a chaleur|pac|clim\w*)\b")),
+    ("électricien", re.compile(r"\b(electri\w*|prise\w*|disjonct\w*|lumiere\w*|ampoule\w*|courant|plomb\w*|tableau)\b")),
+    ("serrurier", re.compile(r"\b(serrure\w*|cle|cles|verrou\w*|porte bloquee|boite a cles|cylindre)\b")),
+]
+URGENCIES = ["basse", "normale", "haute"]
 PENDING_SECONDS = 120
 PHOTO_TOPIC = "aifred-photo"
 
@@ -355,6 +363,71 @@ async def changer_statut(context: RunContext[Visio], maison: str, statut: str) -
     return "Le tableau est à jour."
 
 
+def _artisan_for(house: str, problem: str) -> dict | None:
+    """L'artisan du métier qui répare. D'abord celui qui est déjà intervenu dans cette maison."""
+    heard = db._plain(problem)
+    trade = next((t for t, words in TRADES if words.search(heard)), None)
+    if not trade:
+        return None
+    pool = [c for c in db.contacts() if c["role"] == "artisan" and db._plain(trade) in db._plain(c["trade"])]
+    came = {db._plain(r["by_name"]) for r in db.interventions() if r["house"] == house}
+    return next((c for c in pool if any(db._plain(c["name"]).split()[0] in by for by in came)), None) or (pool[0] if pool else None)
+
+
+def _urgency(said: str, next_arrival: str | None) -> str:
+    """L'urgence dite par l'équipe, relevée à « haute » si des voyageurs arrivent aujourd'hui."""
+    level = db._plain(said).strip()
+    level = level if level in URGENCIES else "normale"
+    if next_arrival and next_arrival.startswith("aujourd'hui"):
+        return "haute"
+    return level
+
+
+@function_tool
+async def declarer_incident(context: RunContext[Visio], maison: str, probleme: str, urgence: str = "") -> str:
+    """Crée la fiche d'un incident déclaré à la voix par l'équipe (« fuite sous l'évier à REF415 ») :
+    maison, problème, urgence, prochaine arrivée, et l'artisan à proposer. Ne contacte personne.
+
+    Args:
+        maison: le nom ou la référence de la maison.
+        probleme: le problème, en quelques mots, tel qu'il a été dit.
+        urgence: « basse », « normale » ou « haute » si on te l'a dite. Sinon, laisse vide.
+    """
+    asker = _team_asker(context)
+    if not asker:
+        return "Seul un membre de l'équipe peut déclarer un incident. Dis-le simplement."
+    probleme = probleme.strip()[:200]
+    if not probleme:
+        return "Il manque le problème. Demande en une phrase ce qui ne va pas."
+    wanted = db.find_houses(maison)
+    if not wanted:
+        return f"Je ne connais pas la maison « {maison} ». Demande de quelle maison il s'agit."
+    if len(wanted) > 1:
+        return f"Plusieurs maisons correspondent : {', '.join(h['name'] for h in wanted)}. Demande laquelle."
+    house = wanted[0]["name"]
+    arrival = db.next_arrival(house)
+    level = _urgency(urgence, arrival)
+    artisan = _artisan_for(house, probleme)
+    v = context.userdata
+    db.add_incident(house, probleme, level, arrival, artisan["name"] if artisan else None, asker.name or "L'équipe")
+    db.log(v.room.name, f"Incident à {house} : {probleme} (urgence {level}, déclaré par {asker.name})")
+    if db.set_stay_status(house, "Incident signalé"):
+        await v.send_board()
+    await v.card("incident", title=house, problem=probleme, urgency=level, arrival=arrival,
+                 artisan=f"{artisan['name']}, {artisan['trade']}" if artisan else None)
+    a_dire = f"Fiche créée pour {house}, urgence {level}"
+    a_dire += f", arrivée {arrival}." if arrival else "."
+    # Pas de numéro : AIfred ne le lit jamais, et l'invitation passe par preparer_invitation puis le oui
+    return json.dumps({"a_dire": a_dire,
+                       "fiche": {"maison": house, "probleme": probleme, "urgence": level,
+                                 "prochaine_arrivee": arrival or "inconnue", "declare_par": asker.name,
+                                 "statut": "ouvert"},
+                       "artisan_a_proposer": {"nom": artisan["name"], "metier": artisan["trade"]} if artisan else None,
+                       "ensuite": ("Dis a_dire, puis propose de faire venir l'artisan. Rien n'est envoyé sans "
+                                   "preparer_invitation et un oui clair.") if artisan else "Dis a_dire."},
+                      ensure_ascii=False)
+
+
 @function_tool
 async def verifier_vol(context: RunContext[Visio], recherche: str) -> str:
     """Donne l'état du vol d'un voyageur du jour et l'affiche à l'équipe.
@@ -577,4 +650,4 @@ async def write_report(v: Visio, history: llm.ChatContext) -> dict:
 
 
 ALL = [regarder, ma_journee, preparer_rapport, chercher_dans_la_maison, chercher_interventions, verifier_vol,
-       changer_statut, noter_intervention, preparer_invitation, confirmer_envoi, annuler_envoi]
+       changer_statut, noter_intervention, declarer_incident, preparer_invitation, confirmer_envoi, annuler_envoi]
