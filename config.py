@@ -21,7 +21,7 @@ def load_env():
 
 load_env()
 
-# Adresse publique du serveur : liens envoyés par WhatsApp, photos jointes.
+# Adresse publique du serveur : liens envoyés par Telegram, photos jointes.
 PUBLIC_URL = os.environ.get("AIFRED_PUBLIC_URL", "http://localhost:8080").rstrip("/")
 # Code d'accès de l'équipe : sans lui, personne ne peut ouvrir une visio (le serveur est public).
 TEAM_CODE = os.environ.get("AIFRED_TEAM_CODE", "")
@@ -42,15 +42,9 @@ VISIO_PREFIX = "visio-"
 LLM_MODEL = os.environ.get("AIFRED_LLM_MODEL", "claude-haiku-5-5")
 VOICE_ID = os.environ.get("AIFRED_VOICE_ID", "axlOaUiFyOZhy4nv")  # Leo, voix masculine française
 
-# WhatsApp par Zernio, comme Plat du Jour (convex-flows ZernioClient.startConversation).
-# Sans clé ni compte, les messages ne partent pas : ils s'affichent dans la visio (mode essai).
-ZERNIO_API_KEY = os.environ.get("ZERNIO_API_KEY", "")
-ZERNIO_API_URL = os.environ.get("ZERNIO_API_URL", "https://zernio.com/api").rstrip("/")
-ZERNIO_WHATSAPP_ACCOUNT_ID = os.environ.get("ZERNIO_WHATSAPP_ACCOUNT_ID", "")
-# Bac à sable Zernio (numéro US gratuit de test) : message libre au lieu du modèle approuvé
-ZERNIO_SANDBOX = os.environ.get("ZERNIO_SANDBOX", "") in ("1", "true", "oui")
-WHATSAPP_TEMPLATE = os.environ.get("AIFRED_WHATSAPP_TEMPLATE", "aifred_visio")
-WHATSAPP_TEMPLATE_LANGUAGE = os.environ.get("AIFRED_WHATSAPP_TEMPLATE_LANGUAGE", "fr")
+# Invitations par un bot Telegram (créé avec @BotFather). Sans jeton, les messages ne partent pas :
+# ils s'affichent dans la visio (mode essai). Les destinataires doivent avoir ouvert le bot une fois.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
 # Le rapport de la journée par email. Sans ces trois réglages : mode essai, rien ne part.
 POSTMARK_API_TOKEN = os.environ.get("POSTMARK_API_TOKEN", "")
