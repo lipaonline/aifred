@@ -31,7 +31,7 @@ from livekit.agents import RunContext, function_tool, llm
 import config
 import db
 import mailer
-import telegram
+import whatsapp
 
 PHOTOS = config.DATA_DIR / "photos"
 YES_RE = re.compile(r"\b(oui|ouais|vas-y|vas y|ok|okay|d'accord|daccord|envoie|envoie-le|confirme|go)\b")
@@ -409,7 +409,7 @@ async def preparer_rapport(context: RunContext[Visio]) -> str:
 
 @function_tool
 async def preparer_invitation(context: RunContext[Visio], qui: str, motif: str, avec_photo: bool = False) -> str:
-    """Trouve la personne et prépare l'envoi par message du lien de la visio : quelqu'un de l'équipe, un
+    """Trouve la personne et prépare l'envoi par WhatsApp du lien de la visio : quelqu'un de l'équipe, un
     artisan ou un propriétaire. Sur le canal, prépare une visio à ouvrir ensuite. N'envoie rien : il faut
     ensuite demander une confirmation à voix haute.
 
@@ -472,11 +472,9 @@ async def send_pending(v: Visio, invited_by: str) -> str:
     # Depuis le canal, la visio reste à ouvrir : la carte le propose
     result = await _invite(v, contact, reason, photo, invited_by, v.visio_room(), offer_room=v.is_canal)
     if not result["ok"]:
-        if "ouvert le bot" in str(result.get("error", "")):
-            return f"{contact['name']} n'a pas encore ouvert le bot AIfred dans Telegram : il doit le faire une fois avant."
-        return "Le message n'est pas parti, on peut réessayer."
+        return "L'envoi WhatsApp a échoué, on peut réessayer."
     if result["dry_run"]:
-        return "Mode essai : les messages ne sont pas branchés, le lien est affiché à l'écran."
+        return "Mode essai : WhatsApp n'est pas branché, le lien est affiché à l'écran."
     return f"C'est envoyé à {contact['name']}."
 
 
@@ -486,13 +484,13 @@ async def _invite(v: Visio, contact: dict, reason: str, photo: str | None, invit
     link = f"{config.PUBLIC_URL}/v/{code}"
     image_url = f"{config.PUBLIC_URL}/photos/{photo}" if photo else None
     first_name = contact["name"].split()[0]
-    result = await telegram.send_invitation(contact.get("telegram", ""), [first_name, invited_by, reason, link], image_url)
+    result = await whatsapp.send_invitation(contact["phone"], [first_name, invited_by, reason, link], image_url)
     if not result["ok"]:
         db.log(v.room.name, f"Échec de l'invitation à {contact['name']} : {result.get('error')}")
-        await v.card("error", text=f"Le message n'est pas parti vers {contact['name']} : {str(result.get('error'))[:150]}")
+        await v.card("error", text=f"WhatsApp n'est pas parti vers {contact['name']} : {str(result.get('error'))[:150]}")
         return result
     trial = " (mode essai, rien n'est parti)" if result["dry_run"] else ""
-    db.log(v.room.name, f"Invitation par Telegram à {contact['name']} ({contact['trade']}) : {reason}{trial}")
+    db.log(v.room.name, f"Invitation WhatsApp à {contact['name']} ({contact['trade']}) : {reason}{trial}")
     await v.card("sent", name=contact["name"], trade=contact["trade"], link=link, dry_run=result["dry_run"],
                  room=room if offer_room else None, reason=reason)
     return result
@@ -500,7 +498,7 @@ async def _invite(v: Visio, contact: dict, reason: str, photo: str | None, invit
 
 async def invite_many(v: Visio, contact_ids: list[int], reason: str, invited_by: str, room: str):
     """Les personnes cochées quand on lance une visio : toucher « Lancer la visio » vaut confirmation.
-    Celles de l'équipe déjà sur le canal reçoivent une sonnerie, les autres un message."""
+    Celles de l'équipe déjà sur le canal reçoivent une sonnerie, les autres un WhatsApp."""
     for contact_id in contact_ids:
         contact = db.contact(contact_id)
         if not contact:

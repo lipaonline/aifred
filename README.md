@@ -3,7 +3,7 @@
 AIfred (AI + Alfred, le majordome) est l'assistant IA des petites équipes de conciergerie de location
 saisonnière. L'équipe se parle sur un canal, comme au talkie-walkie. Devant une panne, un employé passe
 en visio : AIfred regarde la caméra, trouve l'information dans la fiche de la maison et fait venir
-l'artisan ou le propriétaire par Telegram. Tout ça sans faire la route.
+l'artisan ou le propriétaire par WhatsApp. Tout ça sans faire la route.
 
 > « AIfred, c'est le talkie-walkie avec des yeux, qui répond et qui agit. »
 
@@ -16,7 +16,7 @@ fictives.
 | --- | --- | --- |
 | 1 | **Préparer la journée** : AIfred résume les arrivées et les départs, affiche le tableau du jour, et après le « oui » envoie le rapport par email | fait ; email en mode essai sans clé Postmark |
 | 2 | **Le carnet des maisons** : fiches, historique des interventions, procédures, tarifs, questions fréquentes, vol du voyageur ; il met le tableau à jour et note chaque intervention | fait ; le statut du vol est simulé |
-| 3 | **Faire venir en visio** : AIfred trouve la personne, demande « j'envoie ? », et après le « oui » envoie un message Telegram avec la photo si on la demande, le texte et un bouton « Rejoindre la visio » | fait ; chaque destinataire doit avoir ouvert le bot une fois |
+| 3 | **Faire venir en visio** : AIfred trouve la personne, demande « j'envoie ? », et après le « oui » envoie un WhatsApp avec le lien et, si on le demande, la photo | fait ; un seul téléphone avec le bac à sable Zernio |
 
 AIfred voit aussi par la caméra (`regarder`) : c'est un sens, comme la voix.
 
@@ -43,7 +43,7 @@ Le canal dédié pour parler à AIfred en privé est une évolution prévue, pas
             │ audio, vidéo                 │            + Gradium (voix) + Claude    │
             ▼                              │ tools.py   ce qu'AIfred sait faire      │
  ┌──────────────────────┐   audio, vidéo   │ db.py      SQLite (contacts, maisons…)  │
- │ LiveKit Cloud (salle)│ ◄──────────────► │ telegram.py  bot Telegram (invitations) │
+ │ LiveKit Cloud (salle)│ ◄──────────────► │ whatsapp.py  Zernio → WhatsApp          │
  └──────────────────────┘                  └─────────────────────────────────────────┘
 ```
 
@@ -59,8 +59,7 @@ Le canal dédié pour parler à AIfred en privé est une évolution prévue, pas
   image au téléphone de la personne : une image, pas un flux.
 - **L'écoute** : Gradium ne transcrit qu'entre les deux clics. Le reste du temps, rester connecté ne consomme
   aucun crédit d'écoute.
-- **Les invitations** : par un bot Telegram (`telegram.py`, une seule fonction `send_invitation` : le
-  cerveau ne connaît pas le canal). Sans `TELEGRAM_BOT_TOKEN`, AIfred est en **mode essai** : rien ne
+- **WhatsApp** : par Zernio, comme Plat du Jour. Sans clé Zernio, AIfred est en **mode essai** : rien ne
   part, le lien d'invitation s'affiche dans la visio pour l'ouvrir sur un autre téléphone.
 - **Les garde-fous** :
   - un envoi ne part qu'après un « oui » de la personne qui a demandé l'envoi, vérifié dans le code
@@ -122,35 +121,44 @@ Mise en place, une seule fois :
 Testé le 31 octobre 2026 : depuis Bunny (région Paris), l'agent rejoint la salle, écoute, cherche dans les
 fiches et répond à voix haute. Pas encore essayé depuis un vrai téléphone, ni avec la caméra.
 
-## Telegram pour la démo : le bot AIfred
+## WhatsApp pour la démo : le bac à sable Zernio
 
-Pourquoi Telegram plutôt que WhatsApp pour la démo : pas de bac à sable ni de modèle à faire approuver par
-Meta, pas de session qui expire, gratuit, et la photo, le texte et le bouton « Rejoindre la visio » partent
-dans un seul message.
+Zernio prête gratuitement un numéro américain de test (+1 202 908 7457). Pas de modèle à faire approuver :
+on envoie un message libre (texte, photo et lien). Limites :
 
-La limite : **un bot ne peut pas écrire en premier, ni à un numéro de téléphone.** Chaque destinataire doit
-avoir Telegram et avoir ouvert le bot une fois (bouton Démarrer). Sinon, AIfred le dit : « Marc n'a pas
-encore ouvert le bot AIfred ». Pour de vrais clients, un vrai artisan ne connaîtra pas le bot : voir le
-business plan (SMS par Brevo, WhatsApp avec son propre numéro en option), même fonction `send_invitation`.
+- **un seul téléphone destinataire à la fois** (celui qui joue l'artisan), 50 messages par jour ;
+- ce téléphone est activé d'avance, et l'activation dure 7 jours ;
+- il doit **avoir écrit au numéro du bac à sable dans les 24 dernières heures** : avant chaque démo,
+  envoie « bonjour » depuis ce téléphone ;
+- le message arrive d'un numéro américain au nom de Zernio, pas d'AIfred ;
+- au tout premier envoi, le téléphone reçoit d'abord le message modèle du bac à sable, qui ouvre la
+  conversation.
 
 Mise en place :
 
-1. Dans Telegram, ouvre **@BotFather**, envoie `/newbot`, choisis un nom (« AIfred démo ») et un
-   identifiant qui finit par `bot`. BotFather donne un jeton : il va dans `.env` (`TELEGRAM_BOT_TOKEN=`)
-   et dans les variables de Bunny, **jamais dans le dépôt ni dans le chat de l'équipe**.
-2. Chaque testeur ouvre le bot et touche **Démarrer** (ou écrit « bonjour »).
-3. Les identifiants :
+```bash
+# dans .env : ZERNIO_API_KEY=… puis
+uv run python whatsapp.py sandbox                 # affiche ZERNIO_WHATSAPP_ACCOUNT_ID à copier dans .env
+uv run python whatsapp.py sandbox +33612345678    # active le téléphone de l'« artisan »
+```
 
-   ```bash
-   uv run python telegram.py ids    # liste les personnes qui ont écrit au bot, avec leur identifiant
-   ```
+Le téléphone reçoit un message du bac à sable : il y répond. Puis dans `.env` : `ZERNIO_SANDBOX=1`, et
+le numéro de ce téléphone dans le contact « plombier » (`AIFRED_DEMO_JSON`, ou `demo.example.json` en
+local, puis supprime `data/aifred.db` pour recharger). La photo n'est jointe que si le serveur est en
+ligne : Zernio va la chercher à l'adresse `AIFRED_PUBLIC_URL`.
 
-4. Chaque identifiant va dans le champ `"telegram"` du contact (`AIFRED_DEMO_JSON` sur Bunny, ou
-   `demo.example.json` en local avec des identifiants fictifs), puis on repart d'un dossier de données
-   vide (`data/aifred.db` supprimé en local, nouveau dossier sur Bunny) pour que le carnet soit rechargé.
+## Le modèle WhatsApp, pour un vrai numéro (à faire approuver par Meta)
 
-La photo et le bouton ne sont joints que si le serveur est en ligne : Telegram va chercher la photo à
-l'adresse `AIFRED_PUBLIC_URL` et refuse un bouton vers `localhost` (le lien reste dans le texte).
+Un artisan qui ne nous a jamais écrit ne peut recevoir qu'un modèle approuvé. Dans Zernio (ou le
+Gestionnaire WhatsApp de Meta), sur le numéro d'AIfred :
+
+- **Nom** : `aifred_visio` · **Catégorie** : Utilité · **Langue** : français (`fr`)
+- **En-tête** : image (exemple : une photo de mitigeur)
+- **Corps** :
+  `Bonjour {{1}}, {{2}} vous demande de rejoindre une visio pour : {{3}}. Rejoindre : {{4}}`
+  (1 = prénom de l'artisan, 2 = prénom de l'employé, 3 = motif, 4 = lien de la visio)
+
+Puis `ZERNIO_API_KEY` et `ZERNIO_WHATSAPP_ACCOUNT_ID` dans les variables.
 
 ## Fichiers
 
@@ -161,7 +169,7 @@ l'adresse `AIFRED_PUBLIC_URL` et refuse un bouton vers `localhost` (le lien rest
 | `prompt.md` | les instructions d'AIfred |
 | `server.py` | page web, jetons LiveKit, liens d'invitation, photos |
 | `db.py` | base SQLite ; `demo.example.json` : contacts et maisons fictifs |
-| `telegram.py` | envoi de l'invitation par le bot Telegram ; `python telegram.py ids` donne les identifiants |
+| `whatsapp.py` | envoi du modèle WhatsApp par Zernio |
 | `mailer.py` | le rapport de la journée par email, avec Postmark |
 | `web/index.html` | la page du téléphone (équipe et invités) |
 | `tests/` | les garde-fous et le carnet, testés sans clé ni réseau : `python -m unittest discover -s tests -t .` |
@@ -176,6 +184,6 @@ l'adresse `AIFRED_PUBLIC_URL` et refuse un bouton vers `localhost` (le lien rest
 - Rester sur le canal toute la journée suppose l'écran allumé : sur iPhone, une page web s'endort avec l'écran.
 - Le seuil du mandat et les voyageurs sont cachés à l'artisan par une consigne au modèle, pas par le code :
   la fiche est un seul bloc de texte.
-- Pas encore de réponse aux messages Telegram entrants.
+- Pas encore de réponse aux messages WhatsApp entrants.
 - Délai mesuré en local avec des voix de synthèse : AIfred dit « Une seconde » environ 1 s après le second clic.
   Claude met ensuite 1,3 s par appel en moyenne.

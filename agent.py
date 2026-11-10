@@ -359,7 +359,7 @@ async def entrypoint(ctx: JobContext):
         body = _payload(data)
         room_name = tools.new_visio_name()
         reason = str(body.get("sujet") or "faire le point")[:120]
-        # L'envoi du message peut prendre plusieurs secondes : la visio s'ouvre sans l'attendre
+        # WhatsApp peut prendre plusieurs secondes : la visio s'ouvre sans l'attendre
         _run(tools.invite_many(userdata, [int(i) for i in body.get("invites", [])], reason, caller.name or "L'équipe", room_name))
         return json.dumps({"ok": True, "room": room_name})
 

@@ -23,8 +23,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     name TEXT NOT NULL,
     trade TEXT NOT NULL,           -- plombier, électricien, propriétaire…
     role TEXT NOT NULL,            -- artisan | proprietaire | equipe
-    phone TEXT NOT NULL,           -- format international, jamais lu à voix haute
-    telegram TEXT NOT NULL DEFAULT ''  -- identifiant Telegram (chat_id) pour l'invitation, jamais lu
+    phone TEXT NOT NULL            -- format international, jamais lu à voix haute
 );
 CREATE TABLE IF NOT EXISTS houses (
     id INTEGER PRIMARY KEY,
@@ -87,9 +86,6 @@ def connect():
     try:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(SCHEMA)
-        # Base créée avant Telegram : on ajoute la colonne (les identifiants viennent du carnet de démo)
-        if "telegram" not in {r["name"] for r in conn.execute("PRAGMA table_info(contacts)")}:
-            conn.execute("ALTER TABLE contacts ADD COLUMN telegram TEXT NOT NULL DEFAULT ''")
         yield conn
         conn.commit()
     finally:
@@ -111,8 +107,8 @@ def seed():
         ids = {}
         for c in demo["contacts"]:
             cur = db.execute(
-                "INSERT INTO contacts (name, trade, role, phone, telegram) VALUES (?, ?, ?, ?, ?)",
-                (c["name"], c["trade"], c["role"], c.get("phone", ""), str(c.get("telegram", ""))),
+                "INSERT INTO contacts (name, trade, role, phone) VALUES (?, ?, ?, ?)",
+                (c["name"], c["trade"], c["role"], c["phone"]),
             )
             ids[c["name"]] = cur.lastrowid
         for h in demo["houses"]:
