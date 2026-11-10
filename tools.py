@@ -213,7 +213,8 @@ async def _take_photo(context: RunContext[Visio], name: str = "") -> tuple[bytes
 async def _describe(v: Visio, jpeg: bytes, question: str) -> str:
     response = await v.anthropic_client.messages.create(
         model=config.LLM_MODEL,
-        max_tokens=300,
+        # Haiku réfléchit avant de répondre, et cette réflexion compte dans max_tokens
+        max_tokens=1024,
         system=(
             "Tu regardes une photo prise par un employé de conciergerie pendant une intervention dans une "
             "maison. Réponds en français, en deux phrases au plus, comme à l'oral, sans liste. Dis ce que "
@@ -234,7 +235,7 @@ async def _describe(v: Visio, jpeg: bytes, question: str) -> str:
 async def what_i_see(v: Visio, jpeg: bytes) -> str:
     """Le bouton Photo : personne n'a posé de question, AIfred dit ce qu'on lui montre."""
     try:
-        return await _describe(v, jpeg, "En une seule phrase courte qui commence par « Je vois » : le message d'erreur et la marque s'ils sont lisibles. Sinon, dis ce que tu vois et demande de mieux cadrer.")
+        return await _describe(v, jpeg, "En une seule phrase courte qui commence par « Je vois » : l'appareil, ce qu'il affiche (message d'erreur, valeur d'un cadran ou d'un manomètre) et la marque s'ils sont lisibles. Si rien n'est lisible, demande de mieux cadrer.")
     except anthropic.APIError as e:
         db.log(v.room.name, f"Photo non lue : {e}")
         return "Je n'arrive pas à lire l'image."
